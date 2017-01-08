@@ -1,0 +1,79 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "oFAZNGHb62EGpG3W+8Um/vIKv5k=",
+			"path": "github.com/codahale/sss",
+			"revision": "0cb9f6d3f7f14abe7801e400be78df63f17db52d",
+			"revisionTime": "2016-05-01T17:45:26Z"
+		},
+		{
+			"checksumSHA1": "40vJyUB4ezQSn/NSadsKEOrudMc=",
+			"path": "github.com/inconshreveable/mousetrap",
+			"revision": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75",
+			"revisionTime": "2014-10-17T20:07:13Z"
+		},
+		{
+			"checksumSHA1": "hvkXE4HQ2zgWaCkt3CQTki5hvqc=",
+			"path": "github.com/spf13/cobra",
+			"revision": "7c674d9e72017ed25f6d2b5e497a1368086b6a6f",
+			"revisionTime": "2016-08-02T22:37:37Z"
+		},
+		{
+			"checksumSHA1": "45OZzM/Hyc8mwjG2zn38n6bKZws=",
+			"path": "github.com/spf13/pflag",
+			"revision": "1560c1005499d61b80f865c04d39ca7505bf7f0b",
+			"revisionTime": "2016-07-18T21:50:57Z"
+		},
+		{
+			"checksumSHA1": "TT1rac6kpQp2vz24m5yDGUNQ/QQ=",
+			"path": "golang.org/x/crypto/cast5",
+			"revision": "8e06e8ddd9629eb88639aba897641bff8031f1d3",
+			"revisionTime": "2016-09-10T18:59:01Z"
+		},
+		{
+			"checksumSHA1": "fUZMj6G5H/sVP1oAEEuRu2Q9XhY=",
+			"path": "golang.org/x/crypto/openpgp",
+			"revision": "8e06e8ddd9629eb88639aba897641bff8031f1d3",
+			"revisionTime": "2016-09-10T18:59:01Z"
+		},
+		{
+			"checksumSHA1": "olOKkhrdkYQHZ0lf1orrFQPQrv4=",
+			"path": "golang.org/x/crypto/openpgp/armor",
+			"revision": "8e06e8ddd9629eb88639aba897641bff8031f1d3",
+			"revisionTime": "2016-09-10T18:59:01Z"
+		},
+		{
+			"checksumSHA1": "eo/KtdjieJQXH7Qy+faXFcF70ME=",
+			"path": "golang.org/x/crypto/openpgp/elgamal",
+			"revision": "8e06e8ddd9629eb88639aba897641bff8031f1d3",
+			"revisionTime": "2016-09-10T18:59:01Z"
+		},
+		{
+			"checksumSHA1": "rlxVSaGgqdAgwblsErxTxIfuGfg=",
+			"path": "golang.org/x/crypto/openpgp/errors",
+			"revision": "8e06e8ddd9629eb88639aba897641bff8031f1d3",
+			"revisionTime": "2016-09-10T18:59:01Z"
+		},
+		{
+			"checksumSHA1": "uMWn4uhfWXToATfOXAzGLQjR5MI=",
+			"path": "golang.org/x/crypto/openpgp/packet",
+			"revision": "8e06e8ddd9629eb88639aba897641bff8031f1d3",
+			"revisionTime": "2016-09-10T18:59:01Z"
+		},
+		{
+			"checksumSHA1": "s2qT4UwvzBSkzXuiuMkowif1Olw=",
+			"path": "golang.org/x/crypto/openpgp/s2k",
+			"revision": "8e06e8ddd9629eb88639aba897641bff8031f1d3",
+			"revisionTime": "2016-09-10T18:59:01Z"
+		},
+		{
+			"checksumSHA1": "Hs7pfHDSvTNtnRogAAziW2Lki3M=",
+			"path": "gopkg.in/yaml.v2",
+			"revision": "53feefa2559fb8dfa8d81baad31be332c97d6c77",
+			"revisionTime": "2015-09-24T14:23:14Z"
+		}
+	],
+	"rootPath": "github.com/brancz/hlin"
+}
