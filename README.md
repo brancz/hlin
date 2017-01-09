@@ -5,6 +5,13 @@
 
 Securely share secrets.
 
+## Why is this good?
+
+* Allow key rotation independently of secret rotation
+* Allow secret rotation independently of key rotation
+* Create cryptographically secure data access mechanisms
+* Create policies on secrets (not implemented yet)
+
 ## How does it work?
 
 `hlin`'s cryptographic protocol works on a higher level as follows:
