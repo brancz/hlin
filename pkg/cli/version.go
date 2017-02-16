@@ -12,22 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cli
 
 import (
-	"os"
+	"fmt"
+	"io"
 
-	"github.com/brancz/hlin/pkg/cli"
+	"github.com/spf13/cobra"
 )
 
 var (
 	Version string
 )
 
-func main() {
-	c := cli.New(os.Stdin, os.Stdout, os.Stderr)
-	if err := c.Execute(); err != nil {
-		os.Exit(1)
+func NewCmdVersion(out io.Writer) *cobra.Command {
+	versionCmd := &cobra.Command{
+		Use:   "version",
+		Short: "Print version information",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Fprintf(out, Version)
+		},
 	}
-	os.Exit(0)
+
+	return versionCmd
 }

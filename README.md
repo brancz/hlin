@@ -1,7 +1,7 @@
 # hlin
 
 > Warning! This software is highly experimental and is in no way intended to be
-> used for any senstive or production data.
+> used for any sensitve or production data.
 
 Securely share secrets.
 

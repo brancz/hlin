@@ -42,6 +42,7 @@ Use hlin to securely share any secrets (files, strings, whatever you want).`),
 
 	initPersistentFlags(cmds)
 
+	cmds.AddCommand(NewCmdVersion(out))
 	cmds.AddCommand(NewCmdConfig(in, out))
 	cmds.AddCommand(NewCmdSecret(in, out))
 
