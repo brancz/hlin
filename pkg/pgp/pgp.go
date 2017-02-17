@@ -47,8 +47,8 @@ func (r *Keyring) FindKeys(shortKeyIds []string) ([]*openpgp.Entity, error) {
 		return nil, err
 	}
 
-	for _, e := range entitylist {
-		for _, k := range shortKeyIds {
+	for _, k := range shortKeyIds {
+		for _, e := range entitylist {
 			if e.PrimaryKey.KeyIdShortString() == k {
 				res = append(res, e)
 				break

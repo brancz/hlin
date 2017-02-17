@@ -25,7 +25,7 @@ import (
 	"github.com/brancz/hlin/pkg/pgp"
 )
 
-func Encrypt(encryptor *openpgp.Entity, participants []*openpgp.Entity, cipherText, publicShare io.Writer, privateShares []io.Writer, threshold int) (io.WriteCloser, io.Closer, error) {
+func Encrypt(encryptor *openpgp.Entity, participants []*openpgp.Entity, cipherText io.Writer, publicShares, privateShares []io.Writer, threshold int) (io.WriteCloser, io.Closer, error) {
 	var err error
 
 	key := make([]byte, 32)
@@ -45,33 +45,38 @@ func Encrypt(encryptor *openpgp.Entity, participants []*openpgp.Entity, cipherTe
 		return nil, nil, err
 	}
 
-	// 1 public share + n shares for each participant
-	numShares := 1 + len(participants)
+	numShares := len(publicShares) + len(privateShares)
 
 	shares, err := Split(key, threshold, numShares)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	publicShareWriter := base64.NewEncoder(base64.StdEncoding, publicShare)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer publicShareWriter.Close()
-
-	err = shares[0].Serialize(publicShareWriter)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	for i := range participants {
-		err := encryptPrivateShare(privateShares[i], participants[i], encryptor, shares[1+i])
+	i := 0
+	for j := range publicShares {
+		err := writePublicShare(publicShares[j], shares[i])
 		if err != nil {
 			return nil, nil, err
 		}
+		i++
+	}
+
+	for k := range participants {
+		err := encryptPrivateShare(privateShares[k], participants[k], encryptor, shares[i])
+		if err != nil {
+			return nil, nil, err
+		}
+		i++
 	}
 
 	return plaintextWriter, encWriter, nil
+}
+
+func writePublicShare(publicShare io.Writer, share *Share) error {
+	publicShareWriter := base64.NewEncoder(base64.StdEncoding, publicShare)
+	defer publicShareWriter.Close()
+
+	return share.Serialize(publicShareWriter)
 }
 
 func encryptPrivateShare(privateShare io.Writer, participant, encryptor *openpgp.Entity, share *Share) error {
@@ -85,25 +90,31 @@ func encryptPrivateShare(privateShare io.Writer, participant, encryptor *openpgp
 		return err
 	}
 	defer plain.Close()
+
 	return share.Serialize(plain)
 }
 
-func Decrypt(entity *openpgp.Entity, cipherText, publicShare io.Reader, privateShares []io.Reader) (io.Reader, error) {
+func Decrypt(entity *openpgp.Entity, cipherText io.Reader, publicShares, privateShares []io.Reader) (io.Reader, error) {
 	var err error
 
-	shares := make([]*Share, len(privateShares)+1)
-	decodedPublicShare := base64.NewDecoder(base64.StdEncoding, publicShare)
-	shares[0], err = DeserializeShare(decodedPublicShare)
-	if err != nil {
-		return nil, err
+	shares := make([]*Share, len(publicShares)+len(privateShares))
+	i := 0
+
+	for j := range publicShares {
+		decodedPublicShare := base64.NewDecoder(base64.StdEncoding, publicShares[j])
+		shares[i], err = DeserializeShare(decodedPublicShare)
+		if err != nil {
+			return nil, err
+		}
+		i++
 	}
 
-	for i, privateShare := range privateShares {
+	for k := range privateShares {
 		pf := openpgp.PromptFunction(func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
 			return nil, nil
 		})
 
-		block, err := armor.Decode(privateShare)
+		block, err := armor.Decode(privateShares[k])
 		if err != nil {
 			return nil, err
 		}
@@ -116,10 +127,11 @@ func Decrypt(entity *openpgp.Entity, cipherText, publicShare io.Reader, privateS
 			return nil, err
 		}
 
-		shares[i+1], err = DeserializeShare(md.UnverifiedBody)
+		shares[i], err = DeserializeShare(md.UnverifiedBody)
 		if err != nil {
 			return nil, err
 		}
+		i++
 	}
 
 	key := Combine(shares)

@@ -74,13 +74,17 @@ func NewCmdSecretDecrypt(in io.Reader, out io.Writer) *cobra.Command {
 			}
 
 			cipherText := bytes.NewBuffer([]byte(secret.CipherText))
-			publicShare := bytes.NewBuffer([]byte(secret.PublicShare.Content))
+			publicShares := make([]io.Reader, len(secret.PublicShares))
 			privateShares := make([]io.Reader, len(secret.PrivateShares))
+
 			for i := range secret.PrivateShares {
 				privateShares[i] = bytes.NewBuffer([]byte(secret.PrivateShares[i].Content))
 			}
+			for i := range secret.PublicShares {
+				publicShares[i] = bytes.NewBuffer([]byte(secret.PublicShares[i].Content))
+			}
 
-			r, err := crypto.Decrypt(entity, cipherText, publicShare, privateShares)
+			r, err := crypto.Decrypt(entity, cipherText, publicShares, privateShares)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -113,9 +117,10 @@ func (r *Receivers) Type() string {
 }
 
 type EncryptSecretCmdOptions struct {
-	Threshold int
-	Plaintext string
-	Receivers Receivers
+	Threshold    int
+	PublicShares int
+	Plaintext    string
+	Receivers    Receivers
 }
 
 func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
@@ -152,16 +157,18 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatal(err)
 			}
 
-			participantsKeyIds := append([]string{cfg.PGPConfig.KeyId}, options.Receivers...)
-			participants, err := pgp.NewKeyring(cfg.PGPConfig.PublicKeyring).FindKeys(participantsKeyIds)
+			participants, err := pgp.NewKeyring(cfg.PGPConfig.PublicKeyring).FindKeys(options.Receivers)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			cipherText := bytes.NewBuffer(nil)
-			publicShare := bytes.NewBuffer(nil)
+			publicShares := make([]io.Writer, options.PublicShares)
 			privateShares := make([]io.Writer, len(participants))
-			for i := range participants {
+			for i := range publicShares {
+				publicShares[i] = bytes.NewBuffer(nil)
+			}
+			for i := range privateShares {
 				privateShares[i] = bytes.NewBuffer(nil)
 			}
 
@@ -169,7 +176,7 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 				encryptor,
 				participants,
 				cipherText,
-				publicShare,
+				publicShares,
 				privateShares,
 				options.Threshold,
 			)
@@ -182,11 +189,15 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 			closer.Close()
 
 			secret := &Secret{
-				CipherText: cipherText.String(),
-				PublicShare: &PublicShare{
-					Content: publicShare.String(),
-				},
+				CipherText:    cipherText.String(),
+				PublicShares:  make([]*PublicShare, options.PublicShares),
 				PrivateShares: make([]*PrivateShare, len(participants)),
+			}
+
+			for i := range publicShares {
+				secret.PublicShares[i] = &PublicShare{
+					Content: publicShares[i].(*bytes.Buffer).String(),
+				}
 			}
 
 			for i := range privateShares {
@@ -204,7 +215,8 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 		},
 	}
 
-	encryptSecretCmd.Flags().IntVarP(&options.Threshold, "threshold", "t", 2, "The threshold of how many shares have to be combined to reconstruct the secret (defaults to 2, 1 public share, one for you).")
+	encryptSecretCmd.Flags().IntVarP(&options.Threshold, "threshold", "t", 2, "The threshold of how many shares have to be combined to reconstruct the secret. Must be equal to public-shares + number of receivers.")
+	encryptSecretCmd.Flags().IntVarP(&options.PublicShares, "public-shares", "s", 1, "The amount of shares to generate to be available to all participants.")
 	encryptSecretCmd.Flags().StringVarP(&options.Plaintext, "plaintext", "p", "", "The plaintext secret to encrypt and store.")
 	encryptSecretCmd.Flags().VarP(&options.Receivers, "receiver", "r", "A receiver the secret shall be shared with (repeatable, defaults to none).")
 
@@ -213,7 +225,7 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 
 type Secret struct {
 	CipherText    string          `json:"cipherText"`
-	PublicShare   *PublicShare    `json:"publicShare"`
+	PublicShares  []*PublicShare  `json:"publicShares"`
 	PrivateShares []*PrivateShare `json:"privateShares"`
 }
 
