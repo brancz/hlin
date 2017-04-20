@@ -24,7 +24,8 @@ import (
 )
 
 type Config struct {
-	BaseUrl   string     `json:"baseUrl"`
+	HostPort  string     `json:"hostPort"`
+	TLS       bool       `json:"hostPort"`
 	PGPConfig *PGPConfig `json:"pgpConfig"`
 }
 
@@ -35,7 +36,7 @@ type PGPConfig struct {
 }
 
 var (
-	DefaultBaseUrl = "https://api.example.com"
+	DefaultHostPort = "api.example.com:10000"
 
 	DefaultPGPConfig = &PGPConfig{
 		PublicKeyring: MustDefaultPublicKeyringFilePath(),
@@ -43,7 +44,7 @@ var (
 	}
 
 	DefaultConfig = &Config{
-		BaseUrl:   DefaultBaseUrl,
+		HostPort:  DefaultHostPort,
 		PGPConfig: DefaultPGPConfig,
 	}
 
@@ -89,8 +90,8 @@ func FromFile(file string) (*Config, error) {
 }
 
 func setDefaults(cfg *Config) {
-	if cfg.BaseUrl == "" {
-		cfg.BaseUrl = DefaultBaseUrl
+	if cfg.HostPort == "" {
+		cfg.HostPort = DefaultHostPort
 	}
 
 	if cfg.PGPConfig == nil {

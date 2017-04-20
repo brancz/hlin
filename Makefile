@@ -23,4 +23,10 @@ crossbuild: check-license
 	@GOOS=linux ARCH=amd64 $(MAKE) compile
 	@GOOS=windows ARCH=amd64 $(MAKE) compile
 
-.PHONY: all check-license compile build crossbuild
+proto:
+	protoc --gofast_out=plugins=grpc:. pkg/api/apipb/api.proto
+
+build-api:
+	@$(MAKE) build COMPONENT=api BIN=hlinapi
+
+.PHONY: all check-license compile build crossbuild build-api

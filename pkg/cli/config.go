@@ -30,7 +30,8 @@ type ConfigCmdOptions struct {
 	PGPPublicKeyring string
 	PGPSecretKeyring string
 	PGPKeyId         string
-	Url              string
+	HostPort         string
+	Insecure         bool
 }
 
 func NewCmdConfig(in io.Reader, out io.Writer) *cobra.Command {
@@ -49,11 +50,11 @@ Interactively
 	PGP Public Keyring: [/home/brancz/.gnupg/pubring.gpg] /home/brancz/.gnupg/pubring.gpg
 	PGP Secret Keyring: [/home/brancz/.gnupg/secring.gpg] /home/brancz/.gnupg/secring.gpg
 	PGP Key Id: [1E48B256] 1E48B256
-	API Url: [https://api.example.com] https://api.example.com
+	API HostPort: [api.example.com:10000] api.example.com:10000
 
 Non-interactively
 
-	hlin config --url https://api.example.com --public-keyring /home/brancz/.gnupg/pubring.gpg --secret-keyring /home/brancz/.gnupg/secring.gpg --key-id 1E48B256
+	hlin config --address api.example.com:10000 --public-keyring /home/brancz/.gnupg/pubring.gpg --secret-keyring /home/brancz/.gnupg/secring.gpg --key-id 1E48B256
 
 `,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -81,24 +82,36 @@ Non-interactively
 				}
 			}
 
-			if options.Url == "" {
-				options.Url, err = Ask(in, out, "API Url:", cfg.BaseUrl)
+			if options.HostPort == "" {
+				options.HostPort, err = Ask(in, out, "API HostPort:", cfg.HostPort)
 				if err != nil {
 					log.Fatal(err)
 				}
 			}
 
+			//if insecure == nil {
+			//	choice, err := Ask(in, out, "TLS (Y/n):", cfg.HostPort)
+			//	if err != nil {
+			//		log.Fatal(err)
+			//	}
+			//	options.Insecure = (choice == "no" || choice == "n")
+			//}
+			//if insecure != nil {
+			//	options.Insecure = *insecure
+			//}
+
 			cfg.PGPConfig.PublicKeyring = options.PGPPublicKeyring
 			cfg.PGPConfig.SecretKeyring = options.PGPSecretKeyring
 			cfg.PGPConfig.KeyId = options.PGPKeyId
-			cfg.BaseUrl = options.Url
+			cfg.HostPort = options.HostPort
 
 			cfg.SaveTo(GlobalFlags.cfgFile)
 			fmt.Fprint(out, "\nClient configured.\n")
 		},
 	}
 
-	configCmd.Flags().StringVarP(&options.Url, "url", "u", "", "The URL to use as a base URL when doing API requests.")
+	configCmd.Flags().StringVarP(&options.HostPort, "address", "a", "", "The hostname to issue API requests against as host:port.")
+	//configCmd.Flags().BoolVarP(insecure, "insecure", "i", false, "Whether to disable TLS and use plain TCP.")
 	configCmd.Flags().StringVarP(&options.PGPKeyId, "key-id", "k", "", "The PGP Key Id to use.")
 	configCmd.Flags().StringVarP(&options.PGPPublicKeyring, "public-keyring", "p", "", "The PGP Public Keyring to use for public keys.")
 	configCmd.Flags().StringVarP(&options.PGPSecretKeyring, "secret-keyring", "s", "", "The PGP Secret Keyring to use private keys.")

@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package apipb;
+
+service API {
+  rpc GetSecret(GetSecretRequest) returns (Secret) {}
+  rpc CreateSecret(Secret) returns (Secret) {}
+}
+
+message GetSecretRequest {
+  string secret_id = 1;
+}
+
+message Secret {
+  string id = 1;
+  string cipher_text = 2;
+  repeated PublicShare public_shares = 3;
+  repeated PrivateShare private_shares = 4;
+}
+
+message PublicShare {
+  string content = 1;
+}
+
+message PrivateShare {
+  string content = 1;
+  string receiver = 2;
+}
