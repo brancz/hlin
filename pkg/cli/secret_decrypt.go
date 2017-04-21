@@ -45,7 +45,7 @@ func NewCmdSecretDecrypt(in io.Reader, out io.Writer) *cobra.Command {
 			if fi.Mode()&os.ModeNamedPipe == 0 {
 				log.Fatal("no data to read from stdin")
 			}
-			secret := apipb.Secret{}
+			secret := apipb.CreateSecretRequest{}
 			err = json.NewDecoder(os.Stdin).Decode(&secret)
 			if err != nil {
 				log.Fatal(err)
@@ -56,15 +56,15 @@ func NewCmdSecretDecrypt(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatal(err)
 			}
 
-			cipherText := bytes.NewBuffer([]byte(secret.CipherText))
-			publicShares := make([]io.Reader, len(secret.PublicShares))
-			privateShares := make([]io.Reader, len(secret.PrivateShares))
+			cipherText := bytes.NewBuffer([]byte(secret.CipherText.Content))
+			publicShares := make([]io.Reader, len(secret.Shares.Public.Items))
+			privateShares := make([]io.Reader, len(secret.Shares.Private.Items))
 
-			for i := range secret.PrivateShares {
-				privateShares[i] = bytes.NewBuffer([]byte(secret.PrivateShares[i].Content))
+			for i := range secret.Shares.Private.Items {
+				privateShares[i] = bytes.NewBuffer([]byte(secret.Shares.Private.Items[i].Content))
 			}
-			for i := range secret.PublicShares {
-				publicShares[i] = bytes.NewBuffer([]byte(secret.PublicShares[i].Content))
+			for i := range secret.Shares.Public.Items {
+				publicShares[i] = bytes.NewBuffer([]byte(secret.Shares.Public.Items[i].Content))
 			}
 
 			r, err := crypto.Decrypt(entity, cipherText, publicShares, privateShares)

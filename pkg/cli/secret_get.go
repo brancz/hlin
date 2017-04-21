@@ -66,7 +66,12 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 			defer conn.Close()
 			client := apipb.NewAPIClient(conn)
 
-			secret, err := client.GetSecret(context.TODO(), &apipb.GetSecretRequest{SecretId: args[0]})
+			shares, err := client.GetShares(context.TODO(), &apipb.GetSharesRequest{SecretId: args[0]})
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			ct, err := client.GetCipherText(context.TODO(), &apipb.GetCipherTextRequest{SecretId: args[0]})
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -76,15 +81,15 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatal(err)
 			}
 
-			cipherText := bytes.NewBuffer([]byte(secret.CipherText))
-			publicShares := make([]io.Reader, len(secret.PublicShares))
-			privateShares := make([]io.Reader, len(secret.PrivateShares))
+			cipherText := bytes.NewBuffer([]byte(ct.Content))
+			publicShares := make([]io.Reader, len(shares.Public.Items))
+			privateShares := make([]io.Reader, len(shares.Private.Items))
 
-			for i := range secret.PrivateShares {
-				privateShares[i] = bytes.NewBuffer([]byte(secret.PrivateShares[i].Content))
+			for i := range shares.Private.Items {
+				privateShares[i] = bytes.NewBuffer([]byte(shares.Private.Items[i].Content))
 			}
-			for i := range secret.PublicShares {
-				publicShares[i] = bytes.NewBuffer([]byte(secret.PublicShares[i].Content))
+			for i := range shares.Public.Items {
+				publicShares[i] = bytes.NewBuffer([]byte(shares.Public.Items[i].Content))
 			}
 
 			r, err := crypto.Decrypt(entity, cipherText, publicShares, privateShares)

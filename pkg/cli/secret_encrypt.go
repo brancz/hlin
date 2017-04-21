@@ -119,20 +119,28 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 			plaintextWriter.Close()
 			closer.Close()
 
-			secret := &apipb.Secret{
-				CipherText:    cipherText.String(),
-				PublicShares:  make([]*apipb.PublicShare, options.PublicShares),
-				PrivateShares: make([]*apipb.PrivateShare, len(participants)),
+			secret := &apipb.CreateSecretRequest{
+				CipherText: &apipb.CipherText{
+					Content: cipherText.String(),
+				},
+				Shares: &apipb.Shares{
+					Public: &apipb.PublicShares{
+						Items: make([]*apipb.PublicShare, options.PublicShares),
+					},
+					Private: &apipb.PrivateShares{
+						Items: make([]*apipb.PrivateShare, len(participants)),
+					},
+				},
 			}
 
 			for i := range publicShares {
-				secret.PublicShares[i] = &apipb.PublicShare{
+				secret.Shares.Public.Items[i] = &apipb.PublicShare{
 					Content: publicShares[i].(*bytes.Buffer).String(),
 				}
 			}
 
 			for i := range privateShares {
-				secret.PrivateShares[i] = &apipb.PrivateShare{
+				secret.Shares.Private.Items[i] = &apipb.PrivateShare{
 					Content: privateShares[i].(*bytes.Buffer).String(),
 				}
 			}

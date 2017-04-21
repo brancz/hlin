@@ -16,17 +16,20 @@ compile:
 	@mkdir -p _output/$(GOOS)/$(GOARCH)
 	@CGO_ENABLED=0 go build --installsuffix cgo --ldflags="-s -X github.com/brancz/hlin/pkg/cli.Version=$(VERSION)" -o _output/$(GOOS)/$(GOARCH)/$(BIN) $(GITHUB_URL)/cmd/$(COMPONENT)
 
-build: check-license compile
+build: check-license compile-cli compile-api
 
-crossbuild: check-license
-	@GOOS=darwin ARCH=amd64 $(MAKE) compile
-	@GOOS=linux ARCH=amd64 $(MAKE) compile
-	@GOOS=windows ARCH=amd64 $(MAKE) compile
+crossbuild:
+	@GOOS=darwin ARCH=amd64 $(MAKE) build
+	@GOOS=linux ARCH=amd64 $(MAKE) build
+	@GOOS=windows ARCH=amd64 $(MAKE) build
+
+compile-api:
+	@$(MAKE) compile COMPONENT=api BIN=hlinapi
+
+compile-cli:
+	@$(MAKE) compile COMPONENT=cli BIN=hlin
 
 proto:
 	protoc --gofast_out=plugins=grpc:. pkg/api/apipb/api.proto
-
-build-api:
-	@$(MAKE) build COMPONENT=api BIN=hlinapi
 
 .PHONY: all check-license compile build crossbuild build-api

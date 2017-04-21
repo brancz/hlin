@@ -22,6 +22,7 @@ import (
 
 	"github.com/brancz/hlin/pkg/api"
 	pb "github.com/brancz/hlin/pkg/api/apipb"
+	"github.com/brancz/hlin/pkg/store"
 
 	"github.com/go-kit/kit/log"
 	"google.golang.org/grpc"
@@ -39,7 +40,7 @@ func Main() int {
 
 	as := api.NewAPIServer(
 		logger.With("component", "api"),
-		api.NewMemStore(logger.With("component", "store")),
+		store.NewMemStore(logger.With("component", "store")),
 	)
 
 	pb.RegisterAPIServer(gs, as)

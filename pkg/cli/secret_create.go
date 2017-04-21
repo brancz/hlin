@@ -24,7 +24,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/brancz/hlin/pkg/api/apipb"
+	pb "github.com/brancz/hlin/pkg/api/apipb"
 	"github.com/brancz/hlin/pkg/crypto"
 	"github.com/brancz/hlin/pkg/pgp"
 
@@ -105,20 +105,28 @@ func NewCmdSecretCreate(in io.Reader, out io.Writer) *cobra.Command {
 			plaintextWriter.Close()
 			closer.Close()
 
-			secret := &apipb.Secret{
-				CipherText:    cipherText.String(),
-				PublicShares:  make([]*apipb.PublicShare, options.PublicShares),
-				PrivateShares: make([]*apipb.PrivateShare, len(participants)),
+			secret := &pb.CreateSecretRequest{
+				CipherText: &pb.CipherText{
+					Content: cipherText.String(),
+				},
+				Shares: &pb.Shares{
+					Public: &pb.PublicShares{
+						Items: make([]*pb.PublicShare, options.PublicShares),
+					},
+					Private: &pb.PrivateShares{
+						Items: make([]*pb.PrivateShare, len(participants)),
+					},
+				},
 			}
 
 			for i := range publicShares {
-				secret.PublicShares[i] = &apipb.PublicShare{
+				secret.Shares.Public.Items[i] = &pb.PublicShare{
 					Content: publicShares[i].(*bytes.Buffer).String(),
 				}
 			}
 
 			for i := range privateShares {
-				secret.PrivateShares[i] = &apipb.PrivateShare{
+				secret.Shares.Private.Items[i] = &pb.PrivateShare{
 					Content: privateShares[i].(*bytes.Buffer).String(),
 				}
 			}
@@ -135,12 +143,13 @@ func NewCmdSecretCreate(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatal(err)
 			}
 			defer conn.Close()
-			client := apipb.NewAPIClient(conn)
+			client := pb.NewAPIClient(conn)
 
-			secret, err = client.CreateSecret(context.TODO(), secret)
+			ps, err := client.CreateSecret(context.TODO(), secret)
 			if err != nil {
 				log.Fatal(err)
 			}
+			fmt.Println(ps.SecretId)
 		},
 	}
 

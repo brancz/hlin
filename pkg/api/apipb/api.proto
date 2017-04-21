@@ -3,19 +3,27 @@ syntax = "proto3";
 package apipb;
 
 service API {
-  rpc GetSecret(GetSecretRequest) returns (Secret) {}
-  rpc CreateSecret(Secret) returns (Secret) {}
+  rpc CreateSecret(CreateSecretRequest) returns (PlainSecret) {}
+  rpc GetSecret(GetSecretRequest) returns (PlainSecret) {}
+  rpc GetShares(GetSharesRequest) returns (Shares) {}
+  rpc GetCipherText(GetCipherTextRequest) returns (CipherText) {}
 }
 
-message GetSecretRequest {
-  string secret_id = 1;
+message CipherText {
+  string content = 1;
 }
 
-message Secret {
-  string id = 1;
-  string cipher_text = 2;
-  repeated PublicShare public_shares = 3;
-  repeated PrivateShare private_shares = 4;
+message Shares {
+  PublicShares public = 1;
+  PrivateShares private = 2;
+}
+
+message PublicShares {
+  repeated PublicShare items = 1;
+}
+
+message PrivateShares {
+  repeated PrivateShare items = 1;
 }
 
 message PublicShare {
@@ -25,4 +33,25 @@ message PublicShare {
 message PrivateShare {
   string content = 1;
   string receiver = 2;
+}
+
+message CreateSecretRequest {
+  CipherText cipher_text = 1;
+  Shares shares = 2;
+}
+
+message PlainSecret {
+  string secret_id = 1;
+}
+
+message GetSecretRequest {
+  string secret_id = 1;
+}
+
+message GetSharesRequest {
+  string secret_id = 1;
+}
+
+message GetCipherTextRequest {
+  string secret_id = 1;
 }

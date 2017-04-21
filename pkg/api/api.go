@@ -16,32 +16,73 @@ package api
 
 import (
 	pb "github.com/brancz/hlin/pkg/api/apipb"
+	"github.com/brancz/hlin/pkg/store"
 
 	"github.com/go-kit/kit/log"
 	context "golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	//"google.golang.org/grpc/metadata"
 )
 
-type SecretStore interface {
-	Get(id string) (*pb.Secret, error)
-	Create(s *pb.Secret) (*pb.Secret, error)
-}
-
 type API struct {
-	store  SecretStore
+	store  store.Store
 	logger log.Logger
 }
 
-func NewAPIServer(logger log.Logger, s SecretStore) pb.APIServer {
+func NewAPIServer(logger log.Logger, s store.Store) pb.APIServer {
 	return &API{
 		store:  s,
 		logger: logger,
 	}
 }
 
-func (a *API) GetSecret(ctx context.Context, r *pb.GetSecretRequest) (*pb.Secret, error) {
-	return a.store.Get(r.SecretId)
+func (a *API) CreateSecret(ctx context.Context, s *pb.CreateSecretRequest) (*pb.PlainSecret, error) {
+	return a.store.CreateSecret(s)
 }
 
-func (a *API) CreateSecret(ctx context.Context, s *pb.Secret) (*pb.Secret, error) {
-	return a.store.Create(s)
+func (a *API) GetSecret(ctx context.Context, r *pb.GetSecretRequest) (*pb.PlainSecret, error) {
+	//md, ok := metadata.FromContext(ctx)
+	//if !ok {
+	//	return nil, grpc.Errorf(codes.Unauthenticated, "valid token required")
+	//}
+
+	//jwtToken, ok := md["authorization"]
+	//if !ok {
+	//	return nil, grpc.Errorf(codes.Unauthenticated, "valid token required")
+	//}
+
+	s, err := a.store.GetSecret(r.SecretId)
+	if err == store.SecretNotFound {
+		return nil, grpc.Errorf(codes.NotFound, "secret not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func (a *API) GetShares(ctx context.Context, r *pb.GetSharesRequest) (*pb.Shares, error) {
+	s, err := a.store.GetShares(r.SecretId)
+	if err == store.SharesNotFound {
+		return nil, grpc.Errorf(codes.NotFound, "shares not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func (a *API) GetCipherText(ctx context.Context, r *pb.GetCipherTextRequest) (*pb.CipherText, error) {
+	s, err := a.store.GetCipherText(r.SecretId)
+	if err == store.CipherTextNotFound {
+		return nil, grpc.Errorf(codes.NotFound, "cipher text not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
