@@ -4,7 +4,7 @@ GITHUB_URL=github.com/brancz/hlin
 GOOS?=$(shell uname -s | tr A-Z a-z)
 GOARCH?=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m)))
 BIN?=hlin
-COMPONENT?=cli
+COMPONENT?=server
 VERSION?=$(shell cat VERSION)
 
 check-license:
@@ -12,24 +12,36 @@ check-license:
 	@./scripts/check_license.sh
 
 compile:
-	@echo ">> building $(COMPONENT) for $(GOOS)/$(GOARCH)"
+	@$(eval OUTPUT=_output/$(GOOS)/$(GOARCH)/$(BIN))
+	@echo ">> building $(COMPONENT) for $(GOOS)/$(GOARCH) to $(OUTPUT)"
 	@mkdir -p _output/$(GOOS)/$(GOARCH)
-	@CGO_ENABLED=0 go build --installsuffix cgo --ldflags="-s -X github.com/brancz/hlin/pkg/cli.Version=$(VERSION)" -o _output/$(GOOS)/$(GOARCH)/$(BIN) $(GITHUB_URL)/cmd/$(COMPONENT)
+	@CGO_ENABLED=0 go build --installsuffix cgo --ldflags="-s -X github.com/brancz/hlin/pkg/cli.Version=$(VERSION)" -o $(OUTPUT) $(GITHUB_URL)/cmd/$(COMPONENT)
 
-build: check-license compile-cli compile-api
+build: check-license compile-server compile-client
 
 crossbuild:
-	@GOOS=darwin ARCH=amd64 $(MAKE) build
-	@GOOS=linux ARCH=amd64 $(MAKE) build
-	@GOOS=windows ARCH=amd64 $(MAKE) build
+	@GOOS=darwin ARCH=amd64 $(MAKE) -s build
+	@GOOS=linux ARCH=amd64 $(MAKE) -s build
+	@GOOS=windows ARCH=amd64 $(MAKE) -s build
 
-compile-api:
-	@$(MAKE) compile COMPONENT=api BIN=hlinapi
+compile-server:
+	@$(MAKE) -s compile COMPONENT=server BIN=hlin
 
-compile-cli:
-	@$(MAKE) compile COMPONENT=cli BIN=hlin
+compile-client:
+	@$(MAKE) -s compile COMPONENT=client BIN=hlinctl
 
 proto:
 	protoc --gofast_out=plugins=grpc:. pkg/api/apipb/api.proto
+
+devcerts:
+	rm -rf out
+	certstrap --depot-path "_output/certs" init --common-name "ca" --passphrase ""
+	certstrap --depot-path "_output/certs" request-cert --domain mydomain.com --common-name server --passphrase ""
+	certstrap --depot-path "_output/certs" sign --CA "ca" server
+	certstrap --depot-path "_output/certs" request-cert --ip 127.0.0.1 --common-name client --passphrase ""
+	certstrap --depot-path "_output/certs" sign --CA "ca" client
+
+devrun:
+	_output/linux/amd64/hlin --cert-file _output/certs/server.crt --key-file _output/certs/server.key --ca-file _output/certs/ca.crt
 
 .PHONY: all check-license compile build crossbuild build-api

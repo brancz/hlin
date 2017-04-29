@@ -25,7 +25,7 @@ import (
 
 type Config struct {
 	HostPort  string     `json:"hostPort"`
-	TLS       bool       `json:"hostPort"`
+	TLSConfig *TLSConfig `json:"tlsConfig"`
 	PGPConfig *PGPConfig `json:"pgpConfig"`
 }
 
@@ -33,6 +33,13 @@ type PGPConfig struct {
 	PublicKeyring string `json:"publicKeyring"`
 	SecretKeyring string `json:"secretKeyring"`
 	KeyId         string `json:"keyId"`
+}
+
+type TLSConfig struct {
+	CertFile   string `json:"certFile"`
+	KeyFile    string `json:"keyFile"`
+	CaFile     string `json:"caFile"`
+	ServerName string `json:"serverName"`
 }
 
 var (
@@ -46,6 +53,7 @@ var (
 	DefaultConfig = &Config{
 		HostPort:  DefaultHostPort,
 		PGPConfig: DefaultPGPConfig,
+		TLSConfig: &TLSConfig{},
 	}
 
 	DefaultConfigDirectoryName = ".hlin"
@@ -104,6 +112,10 @@ func setDefaults(cfg *Config) {
 
 	if cfg.PGPConfig.SecretKeyring == "" {
 		cfg.PGPConfig.SecretKeyring = MustDefaultSecretKeyringFilePath()
+	}
+
+	if cfg.TLSConfig == nil {
+		cfg.TLSConfig = &TLSConfig{}
 	}
 }
 

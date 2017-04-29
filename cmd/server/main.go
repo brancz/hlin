@@ -15,6 +15,9 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/signal"
@@ -25,18 +28,52 @@ import (
 	"github.com/brancz/hlin/pkg/store"
 
 	"github.com/go-kit/kit/log"
+	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
 	Version string
 )
 
-func Main() int {
-	gs := grpc.NewServer()
+type options struct {
+	certFile string
+	keyFile  string
+	caFile   string
+}
 
+func Main() int {
 	logger := log.NewContext(log.NewLogfmtLogger(os.Stdout)).
 		With("ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
+
+	opts := options{}
+	flags := pflag.NewFlagSet("hlin", pflag.ExitOnError)
+	flags.StringVar(&opts.certFile, "cert-file", "", "The plaintext secret to encrypt and store.")
+	flags.StringVar(&opts.keyFile, "key-file", "", "The plaintext secret to encrypt and store.")
+	flags.StringVar(&opts.caFile, "ca-file", "", "The plaintext secret to encrypt and store.")
+	flags.Parse(os.Args[1:])
+
+	certificate, err := tls.LoadX509KeyPair(opts.certFile, opts.keyFile)
+
+	certPool := x509.NewCertPool()
+	bs, err := ioutil.ReadFile(opts.caFile)
+	if err != nil {
+		logger.Log("msg", "failed to read client ca cert", "err", err)
+	}
+
+	ok := certPool.AppendCertsFromPEM(bs)
+	if !ok {
+		logger.Log("msg", "failed to append client certs")
+	}
+
+	creds := credentials.NewTLS(&tls.Config{
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		Certificates: []tls.Certificate{certificate},
+		ClientCAs:    certPool,
+	})
+
+	gs := grpc.NewServer(grpc.Creds(creds))
 
 	as := api.NewAPIServer(
 		logger.With("component", "api"),

@@ -31,7 +31,10 @@ type ConfigCmdOptions struct {
 	PGPSecretKeyring string
 	PGPKeyId         string
 	HostPort         string
-	Insecure         bool
+	CertFile         string
+	KeyFile          string
+	CaFile           string
+	ServerName       string
 }
 
 func NewCmdConfig(in io.Reader, out io.Writer) *cobra.Command {
@@ -51,6 +54,9 @@ Interactively
 	PGP Secret Keyring: [/home/brancz/.gnupg/secring.gpg] /home/brancz/.gnupg/secring.gpg
 	PGP Key Id: [1E48B256] 1E48B256
 	API HostPort: [api.example.com:10000] api.example.com:10000
+	Certificate file: [_output/certs/server.crt] _output/certs/server.crt
+	Key file: [_output/certs/server.key] _output/certs/server.key
+	CA file: [_output/certs/ca.crt] _output/certs/ca.crt
 
 Non-interactively
 
@@ -89,21 +95,42 @@ Non-interactively
 				}
 			}
 
-			//if insecure == nil {
-			//	choice, err := Ask(in, out, "TLS (Y/n):", cfg.HostPort)
-			//	if err != nil {
-			//		log.Fatal(err)
-			//	}
-			//	options.Insecure = (choice == "no" || choice == "n")
-			//}
-			//if insecure != nil {
-			//	options.Insecure = *insecure
-			//}
+			if options.CertFile == "" {
+				options.CertFile, err = Ask(in, out, "Certificate file:", cfg.TLSConfig.CertFile)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			if options.KeyFile == "" {
+				options.KeyFile, err = Ask(in, out, "Key file:", cfg.TLSConfig.KeyFile)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			if options.CaFile == "" {
+				options.CaFile, err = Ask(in, out, "CA file:", cfg.TLSConfig.CaFile)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			if options.ServerName == "" {
+				options.ServerName, err = Ask(in, out, "Server name:", cfg.TLSConfig.ServerName)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
 
 			cfg.PGPConfig.PublicKeyring = options.PGPPublicKeyring
 			cfg.PGPConfig.SecretKeyring = options.PGPSecretKeyring
 			cfg.PGPConfig.KeyId = options.PGPKeyId
 			cfg.HostPort = options.HostPort
+			cfg.TLSConfig.CertFile = options.CertFile
+			cfg.TLSConfig.KeyFile = options.KeyFile
+			cfg.TLSConfig.CaFile = options.CaFile
+			cfg.TLSConfig.ServerName = options.ServerName
 
 			cfg.SaveTo(GlobalFlags.cfgFile)
 			fmt.Fprint(out, "\nClient configured.\n")
@@ -111,7 +138,10 @@ Non-interactively
 	}
 
 	configCmd.Flags().StringVarP(&options.HostPort, "address", "a", "", "The hostname to issue API requests against as host:port.")
-	//configCmd.Flags().BoolVarP(insecure, "insecure", "i", false, "Whether to disable TLS and use plain TCP.")
+	configCmd.Flags().StringVar(&options.CertFile, "cert-file", "", "The certificate to use.")
+	configCmd.Flags().StringVar(&options.KeyFile, "key-file", "", "The corresponding key to use with the certificate.")
+	configCmd.Flags().StringVar(&options.CaFile, "ca-file", "", "The certificate authority to validate certificates against.")
+	configCmd.Flags().StringVar(&options.ServerName, "server-name", "", "The server name to validate certificates against.")
 	configCmd.Flags().StringVarP(&options.PGPKeyId, "key-id", "k", "", "The PGP Key Id to use.")
 	configCmd.Flags().StringVarP(&options.PGPPublicKeyring, "public-keyring", "p", "", "The PGP Public Keyring to use for public keys.")
 	configCmd.Flags().StringVarP(&options.PGPSecretKeyring, "secret-keyring", "s", "", "The PGP Secret Keyring to use private keys.")

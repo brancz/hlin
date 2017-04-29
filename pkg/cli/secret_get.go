@@ -23,27 +23,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 
 	"github.com/brancz/hlin/pkg/api/apipb"
+	"github.com/brancz/hlin/pkg/client"
 	"github.com/brancz/hlin/pkg/crypto"
 	"github.com/brancz/hlin/pkg/pgp"
 )
-
-type jwt struct {
-	token string
-}
-
-func (j jwt) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
-	return map[string]string{
-		"authorization": j.token,
-	}, nil
-}
-
-func (j jwt) RequireTransportSecurity() bool {
-	// TODO(brancz): make this true once TLS is configurable
-	return false
-}
 
 func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 	getSecretCmd := &cobra.Command{
@@ -52,26 +37,25 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 		Long:  `Retrieve a secret from a server and decrypt it.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cfg := MustConfig()
-			jwt := jwt{token: "test"}
 
-			// TODO(brancz): make use of TLS configurable
-			conn, err := grpc.Dial(
-				cfg.HostPort,
-				grpc.WithInsecure(),
-				grpc.WithPerRPCCredentials(jwt),
-			)
+			ctx := context.TODO()
+			conn, err := client.NewConnectionFromConfig(ctx, cfg)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer conn.Close()
 			if err != nil {
 				log.Fatal(err)
 			}
 			defer conn.Close()
 			client := apipb.NewAPIClient(conn)
 
-			shares, err := client.GetShares(context.TODO(), &apipb.GetSharesRequest{SecretId: args[0]})
+			shares, err := client.GetShares(ctx, &apipb.GetSharesRequest{SecretId: args[0]})
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			ct, err := client.GetCipherText(context.TODO(), &apipb.GetCipherTextRequest{SecretId: args[0]})
+			ct, err := client.GetCipherText(ctx, &apipb.GetCipherTextRequest{SecretId: args[0]})
 			if err != nil {
 				log.Fatal(err)
 			}

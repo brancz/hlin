@@ -42,16 +42,6 @@ func (a *API) CreateSecret(ctx context.Context, s *pb.CreateSecretRequest) (*pb.
 }
 
 func (a *API) GetSecret(ctx context.Context, r *pb.GetSecretRequest) (*pb.PlainSecret, error) {
-	//md, ok := metadata.FromContext(ctx)
-	//if !ok {
-	//	return nil, grpc.Errorf(codes.Unauthenticated, "valid token required")
-	//}
-
-	//jwtToken, ok := md["authorization"]
-	//if !ok {
-	//	return nil, grpc.Errorf(codes.Unauthenticated, "valid token required")
-	//}
-
 	s, err := a.store.GetSecret(r.SecretId)
 	if err == store.SecretNotFound {
 		return nil, grpc.Errorf(codes.NotFound, "secret not found")

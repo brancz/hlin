@@ -25,12 +25,12 @@ import (
 	"strings"
 
 	pb "github.com/brancz/hlin/pkg/api/apipb"
+	"github.com/brancz/hlin/pkg/client"
 	"github.com/brancz/hlin/pkg/crypto"
 	"github.com/brancz/hlin/pkg/pgp"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 type CreateSecretCmdOptions struct {
@@ -127,25 +127,20 @@ func NewCmdSecretCreate(in io.Reader, out io.Writer) *cobra.Command {
 
 			for i := range privateShares {
 				secret.Shares.Private.Items[i] = &pb.PrivateShare{
-					Content: privateShares[i].(*bytes.Buffer).String(),
+					Content:  privateShares[i].(*bytes.Buffer).String(),
+					Receiver: participants[i].PrimaryKey.KeyIdShortString(),
 				}
 			}
 
-			jwt := jwt{token: "test"}
-
-			// TODO(brancz): make use of TLS configurable
-			conn, err := grpc.Dial(
-				cfg.HostPort,
-				grpc.WithInsecure(),
-				grpc.WithPerRPCCredentials(jwt),
-			)
+			ctx := context.TODO()
+			conn, err := client.NewConnectionFromConfig(ctx, cfg)
 			if err != nil {
 				log.Fatal(err)
 			}
 			defer conn.Close()
 			client := pb.NewAPIClient(conn)
 
-			ps, err := client.CreateSecret(context.TODO(), secret)
+			ps, err := client.CreateSecret(ctx, secret)
 			if err != nil {
 				log.Fatal(err)
 			}
