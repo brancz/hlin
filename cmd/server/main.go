@@ -17,8 +17,10 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -41,6 +43,7 @@ type options struct {
 	certFile string
 	keyFile  string
 	caFile   string
+	port     int
 }
 
 func Main() int {
@@ -52,6 +55,7 @@ func Main() int {
 	flags.StringVar(&opts.certFile, "cert-file", "", "The plaintext secret to encrypt and store.")
 	flags.StringVar(&opts.keyFile, "key-file", "", "The plaintext secret to encrypt and store.")
 	flags.StringVar(&opts.caFile, "ca-file", "", "The plaintext secret to encrypt and store.")
+	flags.IntVarP(&opts.port, "port", "p", 10000, "Port to bind the server to.")
 	flags.Parse(os.Args[1:])
 
 	certificate, err := tls.LoadX509KeyPair(opts.certFile, opts.keyFile)
@@ -82,14 +86,15 @@ func Main() int {
 
 	pb.RegisterAPIServer(gs, as)
 
-	l, err := net.Listen("tcp", ":10000")
+	addr := fmt.Sprintf(":%d", opts.port)
+	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		logger.Log("err", err)
 		return 1
 	}
 
 	go gs.Serve(l)
-	logger.Log("msg", "http server listening on :10000")
+	logger.Log("msg", fmt.Sprintf("http server listening on %s", addr))
 
 	term := make(chan os.Signal)
 	signal.Notify(term, os.Interrupt, syscall.SIGTERM)

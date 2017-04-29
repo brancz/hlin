@@ -34,14 +34,15 @@ proto:
 	protoc --gofast_out=plugins=grpc:. pkg/api/apipb/api.proto
 
 devcerts:
-	rm -rf out
+	rm -rf _output/certs
 	certstrap --depot-path "_output/certs" init --common-name "ca" --passphrase ""
-	certstrap --depot-path "_output/certs" request-cert --domain mydomain.com --common-name server --passphrase ""
-	certstrap --depot-path "_output/certs" sign --CA "ca" server
+	certstrap --depot-path "_output/certs" request-cert --domain mydomain.com --common-name server1 --passphrase ""
+	certstrap --depot-path "_output/certs" sign --CA "ca" server1
+	certstrap --depot-path "_output/certs" request-cert --domain mydomain.com --common-name server2 --passphrase ""
+	certstrap --depot-path "_output/certs" sign --CA "ca" server2
+	certstrap --depot-path "_output/certs" request-cert --domain mydomain.com --common-name server3 --passphrase ""
+	certstrap --depot-path "_output/certs" sign --CA "ca" server3
 	certstrap --depot-path "_output/certs" request-cert --ip 127.0.0.1 --common-name client --passphrase ""
 	certstrap --depot-path "_output/certs" sign --CA "ca" client
-
-devrun:
-	_output/linux/amd64/hlin --cert-file _output/certs/server.crt --key-file _output/certs/server.key --ca-file _output/certs/ca.crt
 
 .PHONY: all check-license compile build crossbuild build-api
