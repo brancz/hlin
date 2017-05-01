@@ -19,10 +19,10 @@ import (
 	"github.com/brancz/hlin/pkg/store"
 
 	"github.com/go-kit/kit/log"
+	uuid "github.com/satori/go.uuid"
 	context "golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	//"google.golang.org/grpc/metadata"
 )
 
 type API struct {
@@ -38,11 +38,11 @@ func NewAPIServer(logger log.Logger, s store.Store) pb.APIServer {
 }
 
 func (a *API) CreateSecret(ctx context.Context, s *pb.CreateSecretRequest) (*pb.PlainSecret, error) {
-	return a.store.CreateSecret(s)
+	return a.store.CreateSecret(ctx, uuid.NewV4().String(), s)
 }
 
 func (a *API) GetSecret(ctx context.Context, r *pb.GetSecretRequest) (*pb.PlainSecret, error) {
-	s, err := a.store.GetSecret(r.SecretId)
+	s, err := a.store.GetSecret(ctx, r.SecretId)
 	if err == store.SecretNotFound {
 		return nil, grpc.Errorf(codes.NotFound, "secret not found")
 	}
@@ -54,7 +54,7 @@ func (a *API) GetSecret(ctx context.Context, r *pb.GetSecretRequest) (*pb.PlainS
 }
 
 func (a *API) GetShares(ctx context.Context, r *pb.GetSharesRequest) (*pb.Shares, error) {
-	s, err := a.store.GetShares(r.SecretId)
+	s, err := a.store.GetShares(ctx, r.SecretId)
 	if err == store.SharesNotFound {
 		return nil, grpc.Errorf(codes.NotFound, "shares not found")
 	}
@@ -66,7 +66,7 @@ func (a *API) GetShares(ctx context.Context, r *pb.GetSharesRequest) (*pb.Shares
 }
 
 func (a *API) GetCipherText(ctx context.Context, r *pb.GetCipherTextRequest) (*pb.CipherText, error) {
-	s, err := a.store.GetCipherText(r.SecretId)
+	s, err := a.store.GetCipherText(ctx, r.SecretId)
 	if err == store.CipherTextNotFound {
 		return nil, grpc.Errorf(codes.NotFound, "cipher text not found")
 	}

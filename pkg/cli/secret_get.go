@@ -30,7 +30,13 @@ import (
 	"github.com/brancz/hlin/pkg/pgp"
 )
 
+type GetSecretCmdOptions struct {
+	NoDecrypt bool
+}
+
 func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
+	options := &GetSecretCmdOptions{}
+
 	getSecretCmd := &cobra.Command{
 		Use:   "get",
 		Short: "Retrieve a secret from a server and decrypt it",
@@ -52,17 +58,31 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 
 			shares, err := client.GetShares(ctx, &apipb.GetSharesRequest{SecretId: args[0]})
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("getting shares failed: %s", err)
 			}
 
 			ct, err := client.GetCipherText(ctx, &apipb.GetCipherTextRequest{SecretId: args[0]})
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("getting cipher text failed: %s", err)
 			}
 
 			entity, err := pgp.NewKeyring(cfg.PGPConfig.SecretKeyring).FindKey(cfg.PGPConfig.KeyId)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("finding private key failed: %s", err)
+			}
+
+			if options.NoDecrypt {
+				fmt.Fprintln(out, "CipherText: \n\n")
+				fmt.Fprintln(out, ct.Content)
+				for i := range shares.Public.Items {
+					fmt.Fprintf(out, "\n\nPublicShare (%d): \n\n\n", i)
+					fmt.Fprintln(out, shares.Public.Items[i].Content)
+				}
+				for i := range shares.Private.Items {
+					fmt.Fprintf(out, "\n\nPrivateShare (%d): \n\n\n", i)
+					fmt.Fprintln(out, shares.Private.Items[i].Content)
+				}
+				return
 			}
 
 			cipherText := bytes.NewBuffer([]byte(ct.Content))
@@ -78,17 +98,19 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 
 			r, err := crypto.Decrypt(entity, cipherText, publicShares, privateShares)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("decrypting secret failed: %s", err)
 			}
 
 			bytes, err := ioutil.ReadAll(r)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("reading the decrypted message failed: %s", err)
 			}
 
 			fmt.Printf(string(bytes))
 		},
 	}
+
+	getSecretCmd.Flags().BoolVar(&options.NoDecrypt, "no-decrypt", false, "Do not decrypt the secret, instead print data to STDOUT")
 
 	return getSecretCmd
 }

@@ -20,15 +20,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/brancz/hlin/pkg/api"
 	pb "github.com/brancz/hlin/pkg/api/apipb"
 	"github.com/brancz/hlin/pkg/store"
 
+	etcdclient "github.com/coreos/etcd/clientv3"
 	"github.com/go-kit/kit/log"
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
@@ -39,11 +41,47 @@ var (
 	Version string
 )
 
+type Peer struct {
+	Nick string
+	Cert string
+	Addr string
+}
+
+func (p Peer) String() string {
+	return p.Nick + ":" + p.Cert + ":" + p.Addr
+}
+
+type Peers []Peer
+
+func (p *Peers) String() string {
+	s := make([]string, len(*p))
+	for i, peer := range *p {
+		s[i] = peer.String()
+	}
+	return strings.Join(s, ",")
+}
+
+func (p *Peers) Set(value string) error {
+	parts := strings.SplitN(value, ":", 3)
+	*p = append(*p, Peer{
+		Nick: parts[0],
+		Cert: parts[1],
+		Addr: parts[2],
+	})
+	return nil
+}
+
+func (p *Peers) Type() string {
+	return "[]Peer"
+}
+
 type options struct {
 	certFile string
 	keyFile  string
 	caFile   string
+	etcd     string
 	port     int
+	peers    Peers
 }
 
 func Main() int {
@@ -55,8 +93,22 @@ func Main() int {
 	flags.StringVar(&opts.certFile, "cert-file", "", "The plaintext secret to encrypt and store.")
 	flags.StringVar(&opts.keyFile, "key-file", "", "The plaintext secret to encrypt and store.")
 	flags.StringVar(&opts.caFile, "ca-file", "", "The plaintext secret to encrypt and store.")
+	flags.StringVar(&opts.etcd, "etcd", "", "The etcd instance to use for storage.")
 	flags.IntVarP(&opts.port, "port", "p", 10000, "Port to bind the server to.")
+	flags.Var(&opts.peers, "peer", "Peers to work together with.")
 	flags.Parse(os.Args[1:])
+
+	c, err := etcdclient.New(etcdclient.Config{
+		Endpoints:   []string{"127.0.0.1:2379"},
+		DialTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		logger.Log("msg", "failed to instantiate etcd client", "err", err)
+		return 1
+	}
+	defer c.Close()
+
+	storage := store.NewEtcdStore(c, logger.With("component", "store"))
 
 	certificate, err := tls.LoadX509KeyPair(opts.certFile, opts.keyFile)
 
@@ -64,11 +116,13 @@ func Main() int {
 	bs, err := ioutil.ReadFile(opts.caFile)
 	if err != nil {
 		logger.Log("msg", "failed to read client ca cert", "err", err)
+		return 1
 	}
 
 	ok := certPool.AppendCertsFromPEM(bs)
 	if !ok {
 		logger.Log("msg", "failed to append client certs")
+		return 1
 	}
 
 	creds := credentials.NewTLS(&tls.Config{
@@ -81,7 +135,7 @@ func Main() int {
 
 	as := api.NewAPIServer(
 		logger.With("component", "api"),
-		store.NewMemStore(logger.With("component", "store")),
+		storage,
 	)
 
 	pb.RegisterAPIServer(gs, as)
