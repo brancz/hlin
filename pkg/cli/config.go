@@ -54,8 +54,8 @@ Interactively
 	PGP Secret Keyring: [/home/brancz/.gnupg/secring.gpg] /home/brancz/.gnupg/secring.gpg
 	PGP Key Id: [1E48B256] 1E48B256
 	API HostPort: [api.example.com:10000] api.example.com:10000
-	Certificate file: [_output/certs/server.crt] _output/certs/server.crt
-	Key file: [_output/certs/server.key] _output/certs/server.key
+	Certificate file: [_output/certs/client.crt] _output/certs/client.crt
+	Key file: [_output/certs/client.key] _output/certs/client.key
 	CA file: [_output/certs/ca.crt] _output/certs/ca.crt
 
 Non-interactively

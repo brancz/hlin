@@ -17,7 +17,11 @@ package cli
 import (
 	"bufio"
 	"bytes"
+	//"crypto/rsa"
+	//"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -29,22 +33,32 @@ import (
 
 	"github.com/brancz/hlin/pkg/api/apipb"
 	"github.com/brancz/hlin/pkg/crypto"
-	"github.com/brancz/hlin/pkg/pgp"
 )
 
-type Receivers []string
+type Receivers []*x509.Certificate
 
 func (r *Receivers) String() string {
-	return strings.Join(*r, ",")
+	return ""
 }
 
 func (r *Receivers) Set(value string) error {
-	*r = append(*r, value)
+	rawCert, err := ioutil.ReadFile(value)
+	if err != nil {
+		return err
+	}
+
+	pemCert, _ := pem.Decode(rawCert)
+	cert, err := x509.ParseCertificate(pemCert.Bytes)
+	if err != nil {
+		return err
+	}
+
+	*r = append(*r, cert)
 	return nil
 }
 
 func (r *Receivers) Type() string {
-	return "[]string"
+	return "map[string]*x509.Certificate"
 }
 
 type EncryptSecretCmdOptions struct {
@@ -62,7 +76,7 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 		Short: "Encrypt a secret",
 		Long:  `Encrypt a secret.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			cfg := MustConfig()
+			//cfg := MustConfig()
 
 			plaintext := options.Plaintext
 			fi, err := os.Stdin.Stat()
@@ -83,19 +97,15 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 				plaintext = strings.TrimSuffix(plaintext, "\n")
 			}
 
-			encryptor, err := pgp.NewKeyring(cfg.PGPConfig.SecretKeyring).FindKey(cfg.PGPConfig.KeyId)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			participants, err := pgp.NewKeyring(cfg.PGPConfig.PublicKeyring).FindKeys(options.Receivers)
-			if err != nil {
-				log.Fatal(err)
-			}
+			//			certificate, err := tls.LoadX509KeyPair(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
+			//			privateKey := certificate.PrivateKey.(*rsa.PrivateKey)
+			//			if err != nil {
+			//				log.Fatal(err)
+			//			}
 
 			cipherText := bytes.NewBuffer(nil)
 			publicShares := make([]io.Writer, options.PublicShares)
-			privateShares := make([]io.Writer, len(participants))
+			privateShares := make([]io.Writer, len(options.Receivers))
 			for i := range publicShares {
 				publicShares[i] = bytes.NewBuffer(nil)
 			}
@@ -104,8 +114,7 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 			}
 
 			plaintextWriter, closer, err := crypto.Encrypt(
-				encryptor,
-				participants,
+				options.Receivers,
 				cipherText,
 				publicShares,
 				privateShares,
@@ -128,7 +137,7 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 						Items: make([]*apipb.PublicShare, options.PublicShares),
 					},
 					Private: &apipb.PrivateShares{
-						Items: make([]*apipb.PrivateShare, len(participants)),
+						Items: make([]*apipb.PrivateShare, len(options.Receivers)),
 					},
 				},
 			}

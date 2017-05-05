@@ -15,9 +15,15 @@
 package crypto
 
 import (
+	"bytes"
+	"crypto"
 	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"io"
+	"io/ioutil"
 
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
@@ -25,7 +31,7 @@ import (
 	"github.com/brancz/hlin/pkg/pgp"
 )
 
-func Encrypt(encryptor *openpgp.Entity, participants []*openpgp.Entity, cipherText io.Writer, publicShares, privateShares []io.Writer, threshold int) (io.WriteCloser, io.Closer, error) {
+func Encrypt(participants []*x509.Certificate, cipherText io.Writer, publicShares, privateShares []io.Writer, threshold int) (io.WriteCloser, io.Closer, error) {
 	var err error
 
 	key := make([]byte, 32)
@@ -62,7 +68,7 @@ func Encrypt(encryptor *openpgp.Entity, participants []*openpgp.Entity, cipherTe
 	}
 
 	for k := range participants {
-		err := encryptPrivateShare(privateShares[k], participants[k], encryptor, shares[i])
+		err := encryptPrivateShare(privateShares[k], participants[k].PublicKey.(*rsa.PublicKey), shares[i])
 		if err != nil {
 			return nil, nil, err
 		}
@@ -79,22 +85,29 @@ func writePublicShare(publicShare io.Writer, share *Share) error {
 	return share.Serialize(publicShareWriter)
 }
 
-func encryptPrivateShare(privateShare io.Writer, participant, encryptor *openpgp.Entity, share *Share) error {
-	privateShareWriter, err := armor.Encode(privateShare, pgp.MessageType, make(map[string]string))
+func encryptPrivateShare(privateShare io.Writer, publicKey *rsa.PublicKey, share *Share) error {
+	b := bytes.NewBuffer(nil)
+	err := share.Serialize(b)
 	if err != nil {
 		return err
 	}
 
-	plain, err := openpgp.Encrypt(privateShareWriter, []*openpgp.Entity{participant}, encryptor, nil, nil)
+	cipherText, err := rsa.EncryptOAEP(
+		sha256.New(),
+		rand.Reader,
+		publicKey,
+		b.Bytes(),
+		[]byte{},
+	)
 	if err != nil {
 		return err
 	}
-	defer plain.Close()
 
-	return share.Serialize(plain)
+	_, err = privateShare.Write(cipherText)
+	return err
 }
 
-func Decrypt(entity *openpgp.Entity, cipherText io.Reader, publicShares, privateShares []io.Reader) (io.Reader, error) {
+func Decrypt(privKey *rsa.PrivateKey, cipherText io.Reader, publicShares, privateShares []io.Reader) (io.Reader, error) {
 	var err error
 
 	shares := make([]*Share, len(publicShares)+len(privateShares))
@@ -110,24 +123,16 @@ func Decrypt(entity *openpgp.Entity, cipherText io.Reader, publicShares, private
 	}
 
 	for k := range privateShares {
-		pf := openpgp.PromptFunction(func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
-			return nil, nil
-		})
-
-		block, err := armor.Decode(privateShares[k])
+		b, err := ioutil.ReadAll(privateShares[k])
 		if err != nil {
 			return nil, err
 		}
-		if block.Type != pgp.MessageType {
-			return nil, err
-		}
-
-		md, err := openpgp.ReadMessage(block.Body, openpgp.EntityList{entity}, pf, nil)
+		plaintext, err := privKey.Decrypt(rand.Reader, b, &rsa.OAEPOptions{Hash: crypto.SHA256, Label: []byte{}})
 		if err != nil {
 			return nil, err
 		}
 
-		shares[i], err = DeserializeShare(md.UnverifiedBody)
+		shares[i], err = DeserializeShare(bytes.NewBuffer(plaintext))
 		if err != nil {
 			return nil, err
 		}

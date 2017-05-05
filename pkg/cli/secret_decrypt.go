@@ -16,6 +16,8 @@ package cli
 
 import (
 	"bytes"
+	"crypto/rsa"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,7 +29,6 @@ import (
 
 	"github.com/brancz/hlin/pkg/api/apipb"
 	"github.com/brancz/hlin/pkg/crypto"
-	"github.com/brancz/hlin/pkg/pgp"
 )
 
 func NewCmdSecretDecrypt(in io.Reader, out io.Writer) *cobra.Command {
@@ -51,7 +52,8 @@ func NewCmdSecretDecrypt(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatal(err)
 			}
 
-			entity, err := pgp.NewKeyring(cfg.PGPConfig.SecretKeyring).FindKey(cfg.PGPConfig.KeyId)
+			certificate, err := tls.LoadX509KeyPair(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
+			privateKey := certificate.PrivateKey.(*rsa.PrivateKey)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -67,7 +69,7 @@ func NewCmdSecretDecrypt(in io.Reader, out io.Writer) *cobra.Command {
 				publicShares[i] = bytes.NewBuffer([]byte(secret.Shares.Public.Items[i].Content))
 			}
 
-			r, err := crypto.Decrypt(entity, cipherText, publicShares, privateShares)
+			r, err := crypto.Decrypt(privateKey, cipherText, publicShares, privateShares)
 			if err != nil {
 				log.Fatal(err)
 			}

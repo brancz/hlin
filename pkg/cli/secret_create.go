@@ -17,6 +17,8 @@ package cli
 import (
 	"bufio"
 	"bytes"
+	//"crypto/rsa"
+	//"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -27,7 +29,6 @@ import (
 	pb "github.com/brancz/hlin/pkg/api/apipb"
 	"github.com/brancz/hlin/pkg/client"
 	"github.com/brancz/hlin/pkg/crypto"
-	"github.com/brancz/hlin/pkg/pgp"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -69,19 +70,15 @@ func NewCmdSecretCreate(in io.Reader, out io.Writer) *cobra.Command {
 				plaintext = strings.TrimSuffix(plaintext, "\n")
 			}
 
-			encryptor, err := pgp.NewKeyring(cfg.PGPConfig.SecretKeyring).FindKey(cfg.PGPConfig.KeyId)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			participants, err := pgp.NewKeyring(cfg.PGPConfig.PublicKeyring).FindKeys(options.Receivers)
-			if err != nil {
-				log.Fatal(err)
-			}
+			//			certificate, err := tls.LoadX509KeyPair(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
+			//			privateKey := certificate.PrivateKey.(*rsa.PrivateKey)
+			//			if err != nil {
+			//				log.Fatal(err)
+			//			}
 
 			cipherText := bytes.NewBuffer(nil)
 			publicShares := make([]io.Writer, options.PublicShares)
-			privateShares := make([]io.Writer, len(participants))
+			privateShares := make([]io.Writer, len(options.Receivers))
 			for i := range publicShares {
 				publicShares[i] = bytes.NewBuffer(nil)
 			}
@@ -90,8 +87,7 @@ func NewCmdSecretCreate(in io.Reader, out io.Writer) *cobra.Command {
 			}
 
 			plaintextWriter, closer, err := crypto.Encrypt(
-				encryptor,
-				participants,
+				options.Receivers,
 				cipherText,
 				publicShares,
 				privateShares,
@@ -114,7 +110,7 @@ func NewCmdSecretCreate(in io.Reader, out io.Writer) *cobra.Command {
 						Items: make([]*pb.PublicShare, options.PublicShares),
 					},
 					Private: &pb.PrivateShares{
-						Items: make([]*pb.PrivateShare, len(participants)),
+						Items: make([]*pb.PrivateShare, len(options.Receivers)),
 					},
 				},
 			}
@@ -127,8 +123,8 @@ func NewCmdSecretCreate(in io.Reader, out io.Writer) *cobra.Command {
 
 			for i := range privateShares {
 				secret.Shares.Private.Items[i] = &pb.PrivateShare{
-					Content:  privateShares[i].(*bytes.Buffer).String(),
-					Receiver: participants[i].PrimaryKey.KeyIdShortString(),
+					Content: privateShares[i].(*bytes.Buffer).String(),
+					//Receiver: participants[i].PrimaryKey.KeyIdShortString(),
 				}
 			}
 

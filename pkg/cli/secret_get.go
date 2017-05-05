@@ -16,6 +16,8 @@ package cli
 
 import (
 	"bytes"
+	"crypto/rsa"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -27,7 +29,6 @@ import (
 	"github.com/brancz/hlin/pkg/api/apipb"
 	"github.com/brancz/hlin/pkg/client"
 	"github.com/brancz/hlin/pkg/crypto"
-	"github.com/brancz/hlin/pkg/pgp"
 )
 
 type GetSecretCmdOptions struct {
@@ -66,9 +67,10 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatalf("getting cipher text failed: %s", err)
 			}
 
-			entity, err := pgp.NewKeyring(cfg.PGPConfig.SecretKeyring).FindKey(cfg.PGPConfig.KeyId)
+			certificate, err := tls.LoadX509KeyPair(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
+			privateKey := certificate.PrivateKey.(*rsa.PrivateKey)
 			if err != nil {
-				log.Fatalf("finding private key failed: %s", err)
+				log.Fatal(err)
 			}
 
 			if options.NoDecrypt {
@@ -96,7 +98,7 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 				publicShares[i] = bytes.NewBuffer([]byte(shares.Public.Items[i].Content))
 			}
 
-			r, err := crypto.Decrypt(entity, cipherText, publicShares, privateShares)
+			r, err := crypto.Decrypt(privateKey, cipherText, publicShares, privateShares)
 			if err != nil {
 				log.Fatalf("decrypting secret failed: %s", err)
 			}
