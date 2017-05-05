@@ -27,9 +27,9 @@ import (
 
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
-
-	"github.com/brancz/hlin/pkg/pgp"
 )
+
+var PGPMessageType = "PGP MESSAGE"
 
 func Encrypt(participants []*x509.Certificate, cipherText io.Writer, publicShares, privateShares []io.Writer, threshold int) (io.WriteCloser, io.Closer, error) {
 	var err error
@@ -41,7 +41,7 @@ func Encrypt(participants []*x509.Certificate, cipherText io.Writer, publicShare
 		return nil, nil, err
 	}
 
-	encWriter, err := armor.Encode(cipherText, pgp.MessageType, nil)
+	encWriter, err := armor.Encode(cipherText, PGPMessageType, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -144,7 +144,7 @@ func Decrypt(privKey *rsa.PrivateKey, cipherText io.Reader, publicShares, privat
 	if err != nil {
 		return nil, err
 	}
-	if block.Type != pgp.MessageType {
+	if block.Type != PGPMessageType {
 		return nil, err
 	}
 

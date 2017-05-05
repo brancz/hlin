@@ -17,10 +17,11 @@ package cli
 import (
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/spf13/cobra"
 
-	"github.com/brancz/hlin/pkg/cli/config"
+	"github.com/brancz/hlin/pkg/config"
 )
 
 type globalFlags struct {
@@ -43,12 +44,20 @@ Use hlin to securely share any secrets (files, strings, whatever you want).`),
 	initPersistentFlags(cmds)
 
 	cmds.AddCommand(NewCmdVersion(out))
-	cmds.AddCommand(NewCmdConfig(in, out))
 	cmds.AddCommand(NewCmdSecret(in, out))
 
 	return cmds
 }
 
 func initPersistentFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVarP(&GlobalFlags.cfgFile, "config", "c", config.MustDefaultConfigFilePath(), "config file to use")
+	cmd.PersistentFlags().StringVarP(&GlobalFlags.cfgFile, "config", "c", "hlin.yaml", "config file to use")
+}
+
+func MustConfig() *config.Config {
+	cfg, err := config.FromFile(GlobalFlags.cfgFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return cfg
 }

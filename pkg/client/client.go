@@ -19,7 +19,7 @@ import (
 	"crypto/x509"
 	"io/ioutil"
 
-	"github.com/brancz/hlin/pkg/cli/config"
+	"github.com/brancz/hlin/pkg/config"
 
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
