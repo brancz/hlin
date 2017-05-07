@@ -25,6 +25,18 @@ import (
 	"golang.org/x/net/context"
 )
 
+var SecretNotFound = errors.New("secret not found")
+var SharesNotFound = errors.New("shares not found")
+var CipherTextNotFound = errors.New("cipher text not found")
+
+type SecretStore interface {
+	CreateSecret(ctx context.Context, secretId string, s *pb.CreateSecretRequest) (*pb.PlainSecret, error)
+	GetSecret(ctx context.Context, secretId string) (*pb.PlainSecret, error)
+	GetPublicShares(ctx context.Context, secretId string) (*pb.PublicShares, error)
+	GetPrivateShares(ctx context.Context, secretId, receiver string) (*pb.PrivateShares, error)
+	GetCipherText(ctx context.Context, secretId string) (*pb.CipherText, error)
+}
+
 var WrongNumberOfResults = errors.New("incorrect number of results from etcd")
 
 type EtcdStore struct {
@@ -32,7 +44,7 @@ type EtcdStore struct {
 	logger     log.Logger
 }
 
-func NewEtcdStore(c *clientv3.Client, logger log.Logger) Store {
+func NewEtcdStore(c *clientv3.Client, logger log.Logger) SecretStore {
 	return &EtcdStore{
 		etcdclient: c,
 		logger:     logger,
@@ -105,7 +117,7 @@ func (e *EtcdStore) GetSecret(ctx context.Context, secretId string) (*pb.PlainSe
 	return ps, nil
 }
 
-func (e *EtcdStore) GetShares(ctx context.Context, secretId string) (*pb.Shares, error) {
+func (e *EtcdStore) GetPublicShares(ctx context.Context, secretId string) (*pb.PublicShares, error) {
 	r, err := e.etcdclient.Get(ctx, publicSharesKey(secretId))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting PublicShares from etcd failed")
@@ -120,11 +132,11 @@ func (e *EtcdStore) GetShares(ctx context.Context, secretId string) (*pb.Shares,
 
 	pubShares := &pb.PublicShares{}
 	err = proto.Unmarshal(r.Kvs[0].Value, pubShares)
-	if err != nil {
-		return nil, errors.Wrap(err, "unmarshaling PublicShares failed")
-	}
+	return pubShares, errors.Wrap(err, "unmarshaling PublicShares failed")
+}
 
-	r, err = e.etcdclient.Get(ctx, privateSharesKey(secretId), clientv3.WithPrefix())
+func (e *EtcdStore) GetPrivateShares(ctx context.Context, secretId, receiver string) (*pb.PrivateShares, error) {
+	r, err := e.etcdclient.Get(ctx, privateSharesKeyForReceiver(secretId, receiver), clientv3.WithPrefix())
 	if err != nil {
 		return nil, errors.Wrap(err, "getting PrivateShares from etcd failed")
 	}
@@ -142,11 +154,8 @@ func (e *EtcdStore) GetShares(ctx context.Context, secretId string) (*pb.Shares,
 		privShares[i] = privShare
 	}
 
-	return &pb.Shares{
-		Public: pubShares,
-		Private: &pb.PrivateShares{
-			Items: privShares,
-		},
+	return &pb.PrivateShares{
+		Items: privShares,
 	}, nil
 }
 
@@ -188,8 +197,12 @@ func privateSharesKey(secretId string) string {
 	return sharesKey(secretId) + "/private"
 }
 
+func privateSharesKeyForReceiver(secretId, receiver string) string {
+	return privateSharesKey(secretId) + "/" + receiver
+}
+
 func privateShareKey(secretId, receiver, uuid string) string {
-	return privateSharesKey(secretId) + "/" + receiver + "/" + uuid
+	return privateSharesKeyForReceiver(secretId, receiver) + "/" + uuid
 }
 
 func cipherTextKey(secretId string) string {

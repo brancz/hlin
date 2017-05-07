@@ -23,8 +23,15 @@ import (
 )
 
 type Config struct {
-	HostPort  string     `json:"hostPort"`
+	Members   Members    `json:"members"`
 	TLSConfig *TLSConfig `json:"tlsConfig"`
+}
+
+type Members []*Member
+
+type Member struct {
+	HostPort string `json:"hostPort"`
+	CertFile string `json:"certFile"`
 }
 
 type TLSConfig struct {

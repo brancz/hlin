@@ -27,7 +27,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-func NewConnectionFromConfig(ctx context.Context, cfg *config.Config) (*grpc.ClientConn, error) {
+func SingleConnectionFromConfig(ctx context.Context, cfg *config.Config) (*grpc.ClientConn, error) {
 	certificate, err := tls.LoadX509KeyPair(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
 
 	certPool := x509.NewCertPool()
@@ -48,7 +48,36 @@ func NewConnectionFromConfig(ctx context.Context, cfg *config.Config) (*grpc.Cli
 	})
 
 	conn, err := grpc.Dial(
-		cfg.HostPort,
+		// TODO(brancz): retry to dial with all configured members until
+		// success or no more members to try.
+		cfg.Members[0].HostPort,
+		grpc.WithTransportCredentials(transportCreds),
+	)
+	return conn, errors.Wrap(err, "dialing server failed")
+}
+
+func NewConnection(ctx context.Context, hostPort string, tlsConfig *config.TLSConfig) (*grpc.ClientConn, error) {
+	certificate, err := tls.LoadX509KeyPair(tlsConfig.CertFile, tlsConfig.KeyFile)
+
+	certPool := x509.NewCertPool()
+	bs, err := ioutil.ReadFile(tlsConfig.CaFile)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read ca cert")
+	}
+
+	ok := certPool.AppendCertsFromPEM(bs)
+	if !ok {
+		return nil, errors.New("failed to append certs")
+	}
+
+	transportCreds := credentials.NewTLS(&tls.Config{
+		ServerName:   tlsConfig.ServerName,
+		Certificates: []tls.Certificate{certificate},
+		RootCAs:      certPool,
+	})
+
+	conn, err := grpc.Dial(
+		hostPort,
 		grpc.WithTransportCredentials(transportCreds),
 	)
 	return conn, errors.Wrap(err, "dialing server failed")

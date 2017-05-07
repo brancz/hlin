@@ -15,6 +15,7 @@
 package main
 
 import (
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -22,12 +23,13 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/brancz/hlin/pkg/api"
 	pb "github.com/brancz/hlin/pkg/api/apipb"
+	"github.com/brancz/hlin/pkg/config"
+	"github.com/brancz/hlin/pkg/crypto"
 	"github.com/brancz/hlin/pkg/store"
 
 	etcdclient "github.com/coreos/etcd/clientv3"
@@ -41,47 +43,13 @@ var (
 	Version string
 )
 
-type Peer struct {
-	Nick string
-	Cert string
-	Addr string
-}
-
-func (p Peer) String() string {
-	return p.Nick + ":" + p.Cert + ":" + p.Addr
-}
-
-type Peers []Peer
-
-func (p *Peers) String() string {
-	s := make([]string, len(*p))
-	for i, peer := range *p {
-		s[i] = peer.String()
-	}
-	return strings.Join(s, ",")
-}
-
-func (p *Peers) Set(value string) error {
-	parts := strings.SplitN(value, ":", 3)
-	*p = append(*p, Peer{
-		Nick: parts[0],
-		Cert: parts[1],
-		Addr: parts[2],
-	})
-	return nil
-}
-
-func (p *Peers) Type() string {
-	return "[]Peer"
-}
-
 type options struct {
-	certFile string
-	keyFile  string
-	caFile   string
-	etcd     string
-	port     int
-	peers    Peers
+	certFile   string
+	keyFile    string
+	caFile     string
+	etcd       string
+	port       int
+	configFile string
 }
 
 func Main() int {
@@ -90,16 +58,23 @@ func Main() int {
 
 	opts := options{}
 	flags := pflag.NewFlagSet("hlin", pflag.ExitOnError)
+	flags.StringVar(&opts.configFile, "config-file", "", "The config file to load and use.")
 	flags.StringVar(&opts.certFile, "cert-file", "", "The plaintext secret to encrypt and store.")
 	flags.StringVar(&opts.keyFile, "key-file", "", "The plaintext secret to encrypt and store.")
 	flags.StringVar(&opts.caFile, "ca-file", "", "The plaintext secret to encrypt and store.")
 	flags.StringVar(&opts.etcd, "etcd", "", "The etcd instance to use for storage.")
 	flags.IntVarP(&opts.port, "port", "p", 10000, "Port to bind the server to.")
-	flags.Var(&opts.peers, "peer", "Peers to work together with.")
 	flags.Parse(os.Args[1:])
 
+	cfg, err := config.FromFile(opts.configFile)
+	if err != nil {
+		logger.Log("msg", "failed to load config file", "err", err)
+		return 1
+	}
+
 	c, err := etcdclient.New(etcdclient.Config{
-		Endpoints:   []string{"127.0.0.1:2379"},
+		// TODO(brancz): make etcd flag repeatable
+		Endpoints:   []string{opts.etcd},
 		DialTimeout: 5 * time.Second,
 	})
 	if err != nil {
@@ -111,6 +86,27 @@ func Main() int {
 	storage := store.NewEtcdStore(c, logger.With("component", "store"))
 
 	certificate, err := tls.LoadX509KeyPair(opts.certFile, opts.keyFile)
+	if err != nil {
+		logger.Log("msg", "loading certificates key pair failed", "err", err)
+		return 1
+	}
+
+	cert, err := crypto.LoadCertificate(opts.certFile)
+	if err != nil {
+		logger.Log("msg", "loading certificate failed", "err", err)
+		return 1
+	}
+
+	pubKeys := make(map[string]*rsa.PublicKey, len(cfg.Members))
+	for _, member := range cfg.Members {
+		cert, err := crypto.LoadCertificate(member.CertFile)
+		if err != nil {
+			logger.Log("msg", "loading public certificate failed", "err", err)
+			return 1
+		}
+		pubKeys[cert.Subject.CommonName] = cert.PublicKey.(*rsa.PublicKey)
+	}
+	keyStore := store.NewMemoryKeyStore(pubKeys, certificate, cert)
 
 	certPool := x509.NewCertPool()
 	bs, err := ioutil.ReadFile(opts.caFile)
@@ -136,6 +132,7 @@ func Main() int {
 	as := api.NewAPIServer(
 		logger.With("component", "api"),
 		storage,
+		keyStore,
 	)
 
 	pb.RegisterAPIServer(gs, as)

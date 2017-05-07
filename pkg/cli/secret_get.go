@@ -25,8 +25,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
-	"github.com/brancz/hlin/pkg/api/apipb"
+	pb "github.com/brancz/hlin/pkg/api/apipb"
 	"github.com/brancz/hlin/pkg/client"
 	"github.com/brancz/hlin/pkg/crypto"
 )
@@ -46,25 +47,25 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 			cfg := MustConfig()
 
 			ctx := context.TODO()
-			conn, err := client.NewConnectionFromConfig(ctx, cfg)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer conn.Close()
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer conn.Close()
-			client := apipb.NewAPIClient(conn)
-
-			shares, err := client.GetShares(ctx, &apipb.GetSharesRequest{SecretId: args[0]})
-			if err != nil {
-				log.Fatalf("getting shares failed: %s", err)
+			conns := make([]*grpc.ClientConn, len(cfg.Members))
+			for i, member := range cfg.Members {
+				conn, err := client.NewConnection(ctx, member.HostPort, cfg.TLSConfig)
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer conn.Close()
+				conns[i] = conn
 			}
 
-			ct, err := client.GetCipherText(ctx, &apipb.GetCipherTextRequest{SecretId: args[0]})
+			clients := make([]pb.APIClient, len(cfg.Members))
+			for i, conn := range conns {
+				clients[i] = pb.NewAPIClient(conn)
+			}
+
+			// TODO(brancz): try for all servers and use first successful response
+			pubShares, err := clients[0].GetPublicShares(ctx, &pb.GetPublicSharesRequest{SecretId: args[0]})
 			if err != nil {
-				log.Fatalf("getting cipher text failed: %s", err)
+				log.Fatalf("getting public shares failed: %s", err)
 			}
 
 			certificate, err := tls.LoadX509KeyPair(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
@@ -73,29 +74,54 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatal(err)
 			}
 
+			cert, err := crypto.LoadCertificate(cfg.TLSConfig.CertFile)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			privShares := []*pb.PrivateShare{}
+			for _, client := range clients {
+				privSharesRes, err := client.GetPrivateShares(ctx, &pb.GetPrivateSharesRequest{
+					SecretId:  args[0],
+					Requester: cert.Subject.CommonName,
+				})
+				if err != nil {
+					log.Fatalf("getting private shares failed: %s", err)
+				}
+				privShares = append(privShares, privSharesRes.Items...)
+			}
+
+			// TODO(brancz): figure out better way for cipher text retrieval, proto
+			// is probably not the ideal way for storage as secrets should be
+			// unlimited size. Etcd values have an upper bound.
+			ct, err := clients[0].GetCipherText(ctx, &pb.GetCipherTextRequest{SecretId: args[0]})
+			if err != nil {
+				log.Fatalf("getting cipher text failed: %s", err)
+			}
+
 			if options.NoDecrypt {
 				fmt.Fprintln(out, "CipherText: \n\n")
 				fmt.Fprintln(out, ct.Content)
-				for i := range shares.Public.Items {
+				for i := range pubShares.Items {
 					fmt.Fprintf(out, "\n\nPublicShare (%d): \n\n\n", i)
-					fmt.Fprintln(out, shares.Public.Items[i].Content)
+					fmt.Fprintln(out, pubShares.Items[i].Content)
 				}
-				for i := range shares.Private.Items {
+				for i := range privShares {
 					fmt.Fprintf(out, "\n\nPrivateShare (%d): \n\n\n", i)
-					fmt.Fprintln(out, shares.Private.Items[i].Content)
+					fmt.Fprintln(out, privShares[i].Content)
 				}
 				return
 			}
 
 			cipherText := bytes.NewBuffer([]byte(ct.Content))
-			publicShares := make([]io.Reader, len(shares.Public.Items))
-			privateShares := make([]io.Reader, len(shares.Private.Items))
+			publicShares := make([]io.Reader, len(pubShares.Items))
+			privateShares := make([]io.Reader, len(privShares))
 
-			for i := range shares.Private.Items {
-				privateShares[i] = bytes.NewBuffer([]byte(shares.Private.Items[i].Content))
+			for i := range pubShares.Items {
+				publicShares[i] = bytes.NewBuffer([]byte(pubShares.Items[i].Content))
 			}
-			for i := range shares.Public.Items {
-				publicShares[i] = bytes.NewBuffer([]byte(shares.Public.Items[i].Content))
+			for i := range privShares {
+				privateShares[i] = bytes.NewBuffer([]byte(privShares[i].Content))
 			}
 
 			r, err := crypto.Decrypt(privateKey, cipherText, publicShares, privateShares)

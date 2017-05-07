@@ -15,7 +15,10 @@
 package api
 
 import (
+	"crypto/rsa"
+
 	pb "github.com/brancz/hlin/pkg/api/apipb"
+	"github.com/brancz/hlin/pkg/crypto"
 	"github.com/brancz/hlin/pkg/store"
 
 	"github.com/go-kit/kit/log"
@@ -26,23 +29,25 @@ import (
 )
 
 type API struct {
-	store  store.Store
-	logger log.Logger
+	secretStore store.SecretStore
+	keyStore    store.KeyStore
+	logger      log.Logger
 }
 
-func NewAPIServer(logger log.Logger, s store.Store) pb.APIServer {
+func NewAPIServer(logger log.Logger, sStore store.SecretStore, kStore store.KeyStore) pb.APIServer {
 	return &API{
-		store:  s,
-		logger: logger,
+		secretStore: sStore,
+		logger:      logger,
+		keyStore:    kStore,
 	}
 }
 
 func (a *API) CreateSecret(ctx context.Context, s *pb.CreateSecretRequest) (*pb.PlainSecret, error) {
-	return a.store.CreateSecret(ctx, uuid.NewV4().String(), s)
+	return a.secretStore.CreateSecret(ctx, uuid.NewV4().String(), s)
 }
 
 func (a *API) GetSecret(ctx context.Context, r *pb.GetSecretRequest) (*pb.PlainSecret, error) {
-	s, err := a.store.GetSecret(ctx, r.SecretId)
+	s, err := a.secretStore.GetSecret(ctx, r.SecretId)
 	if err == store.SecretNotFound {
 		return nil, grpc.Errorf(codes.NotFound, "secret not found")
 	}
@@ -53,10 +58,10 @@ func (a *API) GetSecret(ctx context.Context, r *pb.GetSecretRequest) (*pb.PlainS
 	return s, nil
 }
 
-func (a *API) GetShares(ctx context.Context, r *pb.GetSharesRequest) (*pb.Shares, error) {
-	s, err := a.store.GetShares(ctx, r.SecretId)
+func (a *API) GetPublicShares(ctx context.Context, r *pb.GetPublicSharesRequest) (*pb.PublicShares, error) {
+	s, err := a.secretStore.GetPublicShares(ctx, r.SecretId)
 	if err == store.SharesNotFound {
-		return nil, grpc.Errorf(codes.NotFound, "shares not found")
+		return nil, grpc.Errorf(codes.NotFound, "public shares not found")
 	}
 	if err != nil {
 		return nil, err
@@ -65,8 +70,37 @@ func (a *API) GetShares(ctx context.Context, r *pb.GetSharesRequest) (*pb.Shares
 	return s, nil
 }
 
+func (a *API) GetPrivateShares(ctx context.Context, r *pb.GetPrivateSharesRequest) (*pb.PrivateShares, error) {
+	pubKey, err := a.keyStore.PublicKey(r.Requester)
+	if err == store.PublicKeyNotFound {
+		return nil, grpc.Errorf(codes.NotFound, "key for requester not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := a.secretStore.GetPrivateShares(ctx, r.SecretId, a.keyStore.Certificate().Subject.CommonName)
+	if err == store.SharesNotFound {
+		return nil, grpc.Errorf(codes.NotFound, "private shares not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range s.Items {
+		plaintext, err := crypto.DecryptPrivateShare(a.keyStore.PrivateKey().PrivateKey.(*rsa.PrivateKey), []byte(s.Items[i].Content))
+		if err != nil {
+			return nil, err
+		}
+		encryptedPrivateShare, err := crypto.EncryptPrivateShare(pubKey, plaintext)
+		s.Items[i].Content = string(encryptedPrivateShare)
+	}
+
+	return s, nil
+}
+
 func (a *API) GetCipherText(ctx context.Context, r *pb.GetCipherTextRequest) (*pb.CipherText, error) {
-	s, err := a.store.GetCipherText(ctx, r.SecretId)
+	s, err := a.secretStore.GetCipherText(ctx, r.SecretId)
 	if err == store.CipherTextNotFound {
 		return nil, grpc.Errorf(codes.NotFound, "cipher text not found")
 	}

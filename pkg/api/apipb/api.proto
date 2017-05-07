@@ -5,7 +5,8 @@ package apipb;
 service API {
   rpc CreateSecret(CreateSecretRequest) returns (PlainSecret) {}
   rpc GetSecret(GetSecretRequest) returns (PlainSecret) {}
-  rpc GetShares(GetSharesRequest) returns (Shares) {}
+  rpc GetPublicShares(GetPublicSharesRequest) returns (PublicShares) {}
+  rpc GetPrivateShares(GetPrivateSharesRequest) returns (PrivateShares) {}
   rpc GetCipherText(GetCipherTextRequest) returns (CipherText) {}
 }
 
@@ -48,8 +49,13 @@ message GetSecretRequest {
   string secret_id = 1;
 }
 
-message GetSharesRequest {
+message GetPublicSharesRequest {
   string secret_id = 1;
+}
+
+message GetPrivateSharesRequest {
+  string secret_id = 1;
+  string requester = 2;
 }
 
 message GetCipherTextRequest {

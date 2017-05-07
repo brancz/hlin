@@ -22,6 +22,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"io"
 	"io/ioutil"
 
@@ -68,7 +69,18 @@ func Encrypt(participants []*x509.Certificate, cipherText io.Writer, publicShare
 	}
 
 	for k := range participants {
-		err := encryptPrivateShare(privateShares[k], participants[k].PublicKey.(*rsa.PublicKey), shares[i])
+		b := bytes.NewBuffer(nil)
+		err := shares[i].Serialize(b)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		encryptedShare, err := EncryptPrivateShare(participants[k].PublicKey.(*rsa.PublicKey), b.Bytes())
+		if err != nil {
+			return nil, nil, err
+		}
+
+		_, err = privateShares[k].Write(encryptedShare)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -85,26 +97,14 @@ func writePublicShare(publicShare io.Writer, share *Share) error {
 	return share.Serialize(publicShareWriter)
 }
 
-func encryptPrivateShare(privateShare io.Writer, publicKey *rsa.PublicKey, share *Share) error {
-	b := bytes.NewBuffer(nil)
-	err := share.Serialize(b)
-	if err != nil {
-		return err
-	}
-
-	cipherText, err := rsa.EncryptOAEP(
+func EncryptPrivateShare(publicKey *rsa.PublicKey, plaintext []byte) ([]byte, error) {
+	return rsa.EncryptOAEP(
 		sha256.New(),
 		rand.Reader,
 		publicKey,
-		b.Bytes(),
+		plaintext,
 		[]byte{},
 	)
-	if err != nil {
-		return err
-	}
-
-	_, err = privateShare.Write(cipherText)
-	return err
 }
 
 func Decrypt(privKey *rsa.PrivateKey, cipherText io.Reader, publicShares, privateShares []io.Reader) (io.Reader, error) {
@@ -127,7 +127,8 @@ func Decrypt(privKey *rsa.PrivateKey, cipherText io.Reader, publicShares, privat
 		if err != nil {
 			return nil, err
 		}
-		plaintext, err := privKey.Decrypt(rand.Reader, b, &rsa.OAEPOptions{Hash: crypto.SHA256, Label: []byte{}})
+
+		plaintext, err := DecryptPrivateShare(privKey, b)
 		if err != nil {
 			return nil, err
 		}
@@ -156,4 +157,18 @@ func Decrypt(privKey *rsa.PrivateKey, cipherText io.Reader, publicShares, privat
 	}
 
 	return md.UnverifiedBody, nil
+}
+
+func DecryptPrivateShare(privKey *rsa.PrivateKey, cipherText []byte) ([]byte, error) {
+	return privKey.Decrypt(rand.Reader, cipherText, &rsa.OAEPOptions{Hash: crypto.SHA256, Label: []byte{}})
+}
+
+func LoadCertificate(filename string) (*x509.Certificate, error) {
+	rawCert, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	pemCert, _ := pem.Decode(rawCert)
+	return x509.ParseCertificate(pemCert.Bytes)
 }

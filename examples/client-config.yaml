@@ -1,6 +1,0 @@
-hostport: localhost:10000
-tlsconfig:
-  certfile: _output/certs/client.crt
-  keyfile: _output/certs/client.key
-  cafile: _output/certs/ca.crt
-  servername: mydomain.com

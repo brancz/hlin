@@ -1,0 +1,12 @@
+members:
+- hostport: localhost:10000
+  certfile: _output/certs/server1.crt
+- hostport: localhost:10001
+  certfile: _output/certs/server2.crt
+- hostport: localhost:10002
+  certfile: _output/certs/server3.crt
+tlsconfig:
+  certfile: _output/certs/server1.crt
+  keyfile: _output/certs/server1.key
+  cafile: _output/certs/ca.crt
+  servername: mydomain.com

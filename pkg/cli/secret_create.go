@@ -97,7 +97,6 @@ func NewCmdSecretCreate(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatal(err)
 			}
 			plaintextWriter.Write([]byte(plaintext))
-
 			plaintextWriter.Close()
 			closer.Close()
 
@@ -123,13 +122,13 @@ func NewCmdSecretCreate(in io.Reader, out io.Writer) *cobra.Command {
 
 			for i := range privateShares {
 				secret.Shares.Private.Items[i] = &pb.PrivateShare{
-					Content: privateShares[i].(*bytes.Buffer).String(),
-					//Receiver: participants[i].PrimaryKey.KeyIdShortString(),
+					Content:  privateShares[i].(*bytes.Buffer).String(),
+					Receiver: options.Receivers[i].Subject.CommonName,
 				}
 			}
 
 			ctx := context.TODO()
-			conn, err := client.NewConnectionFromConfig(ctx, cfg)
+			conn, err := client.SingleConnectionFromConfig(ctx, cfg)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -17,11 +17,8 @@ package cli
 import (
 	"bufio"
 	"bytes"
-	//"crypto/rsa"
-	//"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -42,13 +39,7 @@ func (r *Receivers) String() string {
 }
 
 func (r *Receivers) Set(value string) error {
-	rawCert, err := ioutil.ReadFile(value)
-	if err != nil {
-		return err
-	}
-
-	pemCert, _ := pem.Decode(rawCert)
-	cert, err := x509.ParseCertificate(pemCert.Bytes)
+	cert, err := crypto.LoadCertificate(value)
 	if err != nil {
 		return err
 	}
@@ -76,8 +67,6 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 		Short: "Encrypt a secret",
 		Long:  `Encrypt a secret.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			//cfg := MustConfig()
-
 			plaintext := options.Plaintext
 			fi, err := os.Stdin.Stat()
 			if err != nil {
@@ -96,12 +85,6 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 				plaintext, _ = reader.ReadString('\n')
 				plaintext = strings.TrimSuffix(plaintext, "\n")
 			}
-
-			//			certificate, err := tls.LoadX509KeyPair(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
-			//			privateKey := certificate.PrivateKey.(*rsa.PrivateKey)
-			//			if err != nil {
-			//				log.Fatal(err)
-			//			}
 
 			cipherText := bytes.NewBuffer(nil)
 			publicShares := make([]io.Writer, options.PublicShares)
