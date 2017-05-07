@@ -141,9 +141,6 @@ func (e *EtcdStore) GetPrivateShares(ctx context.Context, secretId, receiver str
 		return nil, errors.Wrap(err, "getting PrivateShares from etcd failed")
 	}
 
-	if r.Count == 0 {
-		return nil, SharesNotFound
-	}
 	privShares := make([]*pb.PrivateShare, r.Count)
 	for i, kv := range r.Kvs {
 		privShare := &pb.PrivateShare{}
