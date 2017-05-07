@@ -47,7 +47,7 @@ type options struct {
 	certFile   string
 	keyFile    string
 	caFile     string
-	etcd       string
+	etcd       []string
 	port       int
 	configFile string
 }
@@ -62,7 +62,7 @@ func Main() int {
 	flags.StringVar(&opts.certFile, "cert-file", "", "The plaintext secret to encrypt and store.")
 	flags.StringVar(&opts.keyFile, "key-file", "", "The plaintext secret to encrypt and store.")
 	flags.StringVar(&opts.caFile, "ca-file", "", "The plaintext secret to encrypt and store.")
-	flags.StringVar(&opts.etcd, "etcd", "", "The etcd instance to use for storage.")
+	flags.StringSliceVarP(&opts.etcd, "etcd", "e", []string{}, "The etcd instances to use for storage (repeatable).")
 	flags.IntVarP(&opts.port, "port", "p", 10000, "Port to bind the server to.")
 	flags.Parse(os.Args[1:])
 
@@ -73,8 +73,7 @@ func Main() int {
 	}
 
 	c, err := etcdclient.New(etcdclient.Config{
-		// TODO(brancz): make etcd flag repeatable
-		Endpoints:   []string{opts.etcd},
+		Endpoints:   opts.etcd,
 		DialTimeout: 5 * time.Second,
 	})
 	if err != nil {
