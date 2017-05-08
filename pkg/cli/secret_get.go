@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -34,6 +36,25 @@ import (
 
 type GetSecretCmdOptions struct {
 	NoDecrypt bool
+}
+
+type secret struct {
+	CipherText    *cipherText     `json:"cipherText,omitempty"`
+	PublicShares  []*publicShare  `json:"publicShares,omitempty"`
+	PrivateShares []*privateShare `json:"privateShares,omitempty"`
+}
+
+type cipherText struct {
+	Content string `json:"content,omitempty"`
+}
+
+type publicShare struct {
+	Content string `json:"content,omitempty"`
+}
+
+type privateShare struct {
+	Content  string `json:"content,omitempty"`
+	Receiver string `json:"receiver,omitempty"`
 }
 
 func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
@@ -100,16 +121,25 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 			}
 
 			if options.NoDecrypt {
-				fmt.Fprintln(out, "CipherText: \n\n")
-				fmt.Fprintln(out, ct.Content)
+				s := &secret{
+					CipherText:    &cipherText{Content: ct.Content},
+					PublicShares:  []*publicShare{},
+					PrivateShares: []*privateShare{},
+				}
+
 				for i := range pubShares.Items {
-					fmt.Fprintf(out, "\n\nPublicShare (%d): \n\n\n", i)
-					fmt.Fprintln(out, pubShares.Items[i].Content)
+					s.PublicShares = append(s.PublicShares, &publicShare{Content: pubShares.Items[i].Content})
 				}
 				for i := range privShares {
-					fmt.Fprintf(out, "\n\nPrivateShare (%d): \n\n\n", i)
-					fmt.Fprintln(out, privShares[i].Content)
+					s.PrivateShares = append(s.PrivateShares, &privateShare{Content: base64.StdEncoding.EncodeToString([]byte(privShares[i].Content))})
 				}
+
+				j, err := json.Marshal(*s)
+				if err != nil {
+					log.Fatalf("json marshaling failed: %s", err)
+				}
+
+				out.Write(j)
 				return
 			}
 
