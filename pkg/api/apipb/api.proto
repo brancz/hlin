@@ -10,8 +10,12 @@ service API {
   rpc GetCipherText(GetCipherTextRequest) returns (CipherText) {}
 }
 
+message ByteContent {
+  bytes bytes = 1;
+}
+
 message CipherText {
-  string content = 1;
+  ByteContent content = 1;
 }
 
 message Shares {
@@ -28,12 +32,16 @@ message PrivateShares {
 }
 
 message PublicShare {
-  string content = 1;
+  ByteContent content = 1;
+  ByteContent signature = 2;
+  string signer = 3;
 }
 
 message PrivateShare {
-  string content = 1;
-  string receiver = 2;
+  ByteContent content = 1;
+  ByteContent signature = 2;
+  string receiver = 3;
+  string signer = 4;
 }
 
 message CreateSecretRequest {

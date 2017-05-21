@@ -16,9 +16,6 @@ package cli
 
 import (
 	"bufio"
-	"bytes"
-	//"crypto/rsa"
-	//"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -70,61 +67,33 @@ func NewCmdSecretCreate(in io.Reader, out io.Writer) *cobra.Command {
 				plaintext = strings.TrimSuffix(plaintext, "\n")
 			}
 
-			//			certificate, err := tls.LoadX509KeyPair(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
-			//			privateKey := certificate.PrivateKey.(*rsa.PrivateKey)
-			//			if err != nil {
-			//				log.Fatal(err)
-			//			}
-
-			cipherText := bytes.NewBuffer(nil)
-			publicShares := make([]io.Writer, options.PublicShares)
-			privateShares := make([]io.Writer, len(options.Receivers))
-			for i := range publicShares {
-				publicShares[i] = bytes.NewBuffer(nil)
-			}
-			for i := range privateShares {
-				privateShares[i] = bytes.NewBuffer(nil)
+			encryptor, err := crypto.LoadTLSEncryptor(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
+			if err != nil {
+				log.Fatal(err)
 			}
 
-			plaintextWriter, closer, err := crypto.Encrypt(
-				options.Receivers,
-				cipherText,
-				publicShares,
-				privateShares,
+			participants := make([]crypto.Participant, len(options.Receivers))
+			for i := range options.Receivers {
+				participants[i] = options.Receivers[i]
+			}
+
+			s, err := crypto.NewEncryptionScheme(
+				encryptor,
+				participants,
+				options.PublicShares,
 				options.Threshold,
 			)
 			if err != nil {
 				log.Fatal(err)
 			}
-			plaintextWriter.Write([]byte(plaintext))
-			plaintextWriter.Close()
-			closer.Close()
+			res, err := s.Encrypt([]byte(plaintext))
+			if err != nil {
+				log.Fatal(err)
+			}
 
 			secret := &pb.CreateSecretRequest{
-				CipherText: &pb.CipherText{
-					Content: cipherText.String(),
-				},
-				Shares: &pb.Shares{
-					Public: &pb.PublicShares{
-						Items: make([]*pb.PublicShare, options.PublicShares),
-					},
-					Private: &pb.PrivateShares{
-						Items: make([]*pb.PrivateShare, len(options.Receivers)),
-					},
-				},
-			}
-
-			for i := range publicShares {
-				secret.Shares.Public.Items[i] = &pb.PublicShare{
-					Content: publicShares[i].(*bytes.Buffer).String(),
-				}
-			}
-
-			for i := range privateShares {
-				secret.Shares.Private.Items[i] = &pb.PrivateShare{
-					Content:  privateShares[i].(*bytes.Buffer).String(),
-					Receiver: options.Receivers[i].Subject.CommonName,
-				}
+				CipherText: res.CipherText,
+				Shares:     res.Shares,
 			}
 
 			ctx := context.TODO()

@@ -15,7 +15,6 @@
 package main
 
 import (
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -26,17 +25,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/brancz/hlin/pkg/api"
-	pb "github.com/brancz/hlin/pkg/api/apipb"
-	"github.com/brancz/hlin/pkg/config"
-	"github.com/brancz/hlin/pkg/crypto"
-	"github.com/brancz/hlin/pkg/store"
-
 	etcdclient "github.com/coreos/etcd/clientv3"
 	"github.com/go-kit/kit/log"
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	"github.com/brancz/hlin/pkg/api"
+	pb "github.com/brancz/hlin/pkg/api/apipb"
+	"github.com/brancz/hlin/pkg/config"
+	"github.com/brancz/hlin/pkg/crypto"
+	"github.com/brancz/hlin/pkg/store"
 )
 
 var (
@@ -84,28 +83,22 @@ func Main() int {
 
 	storage := store.NewEtcdStore(c, logger.With("component", "store"))
 
-	certificate, err := tls.LoadX509KeyPair(opts.certFile, opts.keyFile)
+	encryptor, err := crypto.LoadTLSEncryptor(opts.certFile, opts.keyFile)
 	if err != nil {
-		logger.Log("msg", "loading certificates key pair failed", "err", err)
+		logger.Log("msg", "loading tls encryptor failed", "err", err)
 		return 1
 	}
 
-	cert, err := crypto.LoadCertificate(opts.certFile)
-	if err != nil {
-		logger.Log("msg", "loading certificate failed", "err", err)
-		return 1
-	}
-
-	pubKeys := make(map[string]*rsa.PublicKey, len(cfg.Members))
+	participants := make(map[string]crypto.Participant, len(cfg.Members))
 	for _, member := range cfg.Members {
-		cert, err := crypto.LoadCertificate(member.CertFile)
+		p, err := crypto.LoadX509Participant(member.CertFile)
 		if err != nil {
-			logger.Log("msg", "loading public certificate failed", "err", err)
+			logger.Log("msg", "loading participant failed", "err", err)
 			return 1
 		}
-		pubKeys[cert.Subject.CommonName] = cert.PublicKey.(*rsa.PublicKey)
+		participants[p.Identifier()] = p
 	}
-	keyStore := store.NewMemoryKeyStore(pubKeys, certificate, cert)
+	keyStore := store.NewMemoryKeyStore(participants, encryptor)
 
 	certPool := x509.NewCertPool()
 	bs, err := ioutil.ReadFile(opts.caFile)
@@ -122,7 +115,7 @@ func Main() int {
 
 	creds := credentials.NewTLS(&tls.Config{
 		ClientAuth:   tls.RequireAndVerifyClientCert,
-		Certificates: []tls.Certificate{certificate},
+		Certificates: []tls.Certificate{encryptor.TlsCert},
 		ClientCAs:    certPool,
 	})
 

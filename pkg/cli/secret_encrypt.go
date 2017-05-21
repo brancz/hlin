@@ -16,8 +16,6 @@ package cli
 
 import (
 	"bufio"
-	"bytes"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,23 +26,22 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/brancz/hlin/pkg/api/apipb"
 	"github.com/brancz/hlin/pkg/crypto"
 )
 
-type Receivers []*x509.Certificate
+type Receivers []*crypto.X509Participant
 
 func (r *Receivers) String() string {
 	return ""
 }
 
 func (r *Receivers) Set(value string) error {
-	cert, err := crypto.LoadCertificate(value)
+	cert, err := crypto.LoadX509Certificate(value)
 	if err != nil {
 		return err
 	}
 
-	*r = append(*r, cert)
+	*r = append(*r, crypto.NewX509Participant(cert))
 	return nil
 }
 
@@ -67,6 +64,8 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 		Short: "Encrypt a secret",
 		Long:  `Encrypt a secret.`,
 		Run: func(cmd *cobra.Command, args []string) {
+			cfg := MustConfig()
+
 			plaintext := options.Plaintext
 			fi, err := os.Stdin.Stat()
 			if err != nil {
@@ -86,58 +85,31 @@ func NewCmdSecretEncrypt(in io.Reader, out io.Writer) *cobra.Command {
 				plaintext = strings.TrimSuffix(plaintext, "\n")
 			}
 
-			cipherText := bytes.NewBuffer(nil)
-			publicShares := make([]io.Writer, options.PublicShares)
-			privateShares := make([]io.Writer, len(options.Receivers))
-			for i := range publicShares {
-				publicShares[i] = bytes.NewBuffer(nil)
-			}
-			for i := range privateShares {
-				privateShares[i] = bytes.NewBuffer(nil)
+			encryptor, err := crypto.LoadTLSEncryptor(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
+			if err != nil {
+				log.Fatal(err)
 			}
 
-			plaintextWriter, closer, err := crypto.Encrypt(
-				options.Receivers,
-				cipherText,
-				publicShares,
-				privateShares,
+			participants := make([]crypto.Participant, len(options.Receivers))
+			for i := range options.Receivers {
+				participants[i] = options.Receivers[i]
+			}
+
+			s, err := crypto.NewEncryptionScheme(
+				encryptor,
+				participants,
+				options.PublicShares,
 				options.Threshold,
 			)
 			if err != nil {
 				log.Fatal(err)
 			}
-			plaintextWriter.Write([]byte(plaintext))
-
-			plaintextWriter.Close()
-			closer.Close()
-
-			secret := &apipb.CreateSecretRequest{
-				CipherText: &apipb.CipherText{
-					Content: cipherText.String(),
-				},
-				Shares: &apipb.Shares{
-					Public: &apipb.PublicShares{
-						Items: make([]*apipb.PublicShare, options.PublicShares),
-					},
-					Private: &apipb.PrivateShares{
-						Items: make([]*apipb.PrivateShare, len(options.Receivers)),
-					},
-				},
+			res, err := s.Encrypt([]byte(plaintext))
+			if err != nil {
+				log.Fatal(err)
 			}
 
-			for i := range publicShares {
-				secret.Shares.Public.Items[i] = &apipb.PublicShare{
-					Content: publicShares[i].(*bytes.Buffer).String(),
-				}
-			}
-
-			for i := range privateShares {
-				secret.Shares.Private.Items[i] = &apipb.PrivateShare{
-					Content: privateShares[i].(*bytes.Buffer).String(),
-				}
-			}
-
-			payload, err := json.Marshal(secret)
+			payload, err := json.Marshal(res)
 			if err != nil {
 				log.Fatal(err)
 			}

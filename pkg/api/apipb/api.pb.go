@@ -9,6 +9,7 @@
 		pkg/api/apipb/api.proto
 
 	It has these top-level messages:
+		ByteContent
 		CipherText
 		Shares
 		PublicShares
@@ -46,20 +47,36 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+type ByteContent struct {
+	Bytes []byte `protobuf:"bytes,1,opt,name=bytes,proto3" json:"bytes,omitempty"`
+}
+
+func (m *ByteContent) Reset()                    { *m = ByteContent{} }
+func (m *ByteContent) String() string            { return proto.CompactTextString(m) }
+func (*ByteContent) ProtoMessage()               {}
+func (*ByteContent) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{0} }
+
+func (m *ByteContent) GetBytes() []byte {
+	if m != nil {
+		return m.Bytes
+	}
+	return nil
+}
+
 type CipherText struct {
-	Content string `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	Content *ByteContent `protobuf:"bytes,1,opt,name=content" json:"content,omitempty"`
 }
 
 func (m *CipherText) Reset()                    { *m = CipherText{} }
 func (m *CipherText) String() string            { return proto.CompactTextString(m) }
 func (*CipherText) ProtoMessage()               {}
-func (*CipherText) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{0} }
+func (*CipherText) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{1} }
 
-func (m *CipherText) GetContent() string {
+func (m *CipherText) GetContent() *ByteContent {
 	if m != nil {
 		return m.Content
 	}
-	return ""
+	return nil
 }
 
 type Shares struct {
@@ -70,7 +87,7 @@ type Shares struct {
 func (m *Shares) Reset()                    { *m = Shares{} }
 func (m *Shares) String() string            { return proto.CompactTextString(m) }
 func (*Shares) ProtoMessage()               {}
-func (*Shares) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{1} }
+func (*Shares) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{2} }
 
 func (m *Shares) GetPublic() *PublicShares {
 	if m != nil {
@@ -93,7 +110,7 @@ type PublicShares struct {
 func (m *PublicShares) Reset()                    { *m = PublicShares{} }
 func (m *PublicShares) String() string            { return proto.CompactTextString(m) }
 func (*PublicShares) ProtoMessage()               {}
-func (*PublicShares) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{2} }
+func (*PublicShares) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{3} }
 
 func (m *PublicShares) GetItems() []*PublicShare {
 	if m != nil {
@@ -109,7 +126,7 @@ type PrivateShares struct {
 func (m *PrivateShares) Reset()                    { *m = PrivateShares{} }
 func (m *PrivateShares) String() string            { return proto.CompactTextString(m) }
 func (*PrivateShares) ProtoMessage()               {}
-func (*PrivateShares) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{3} }
+func (*PrivateShares) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{4} }
 
 func (m *PrivateShares) GetItems() []*PrivateShare {
 	if m != nil {
@@ -119,41 +136,73 @@ func (m *PrivateShares) GetItems() []*PrivateShare {
 }
 
 type PublicShare struct {
-	Content string `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	Content   *ByteContent `protobuf:"bytes,1,opt,name=content" json:"content,omitempty"`
+	Signature *ByteContent `protobuf:"bytes,2,opt,name=signature" json:"signature,omitempty"`
+	Signer    string       `protobuf:"bytes,3,opt,name=signer,proto3" json:"signer,omitempty"`
 }
 
 func (m *PublicShare) Reset()                    { *m = PublicShare{} }
 func (m *PublicShare) String() string            { return proto.CompactTextString(m) }
 func (*PublicShare) ProtoMessage()               {}
-func (*PublicShare) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{4} }
+func (*PublicShare) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{5} }
 
-func (m *PublicShare) GetContent() string {
+func (m *PublicShare) GetContent() *ByteContent {
 	if m != nil {
 		return m.Content
+	}
+	return nil
+}
+
+func (m *PublicShare) GetSignature() *ByteContent {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+func (m *PublicShare) GetSigner() string {
+	if m != nil {
+		return m.Signer
 	}
 	return ""
 }
 
 type PrivateShare struct {
-	Content  string `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
-	Receiver string `protobuf:"bytes,2,opt,name=receiver,proto3" json:"receiver,omitempty"`
+	Content   *ByteContent `protobuf:"bytes,1,opt,name=content" json:"content,omitempty"`
+	Signature *ByteContent `protobuf:"bytes,2,opt,name=signature" json:"signature,omitempty"`
+	Receiver  string       `protobuf:"bytes,3,opt,name=receiver,proto3" json:"receiver,omitempty"`
+	Signer    string       `protobuf:"bytes,4,opt,name=signer,proto3" json:"signer,omitempty"`
 }
 
 func (m *PrivateShare) Reset()                    { *m = PrivateShare{} }
 func (m *PrivateShare) String() string            { return proto.CompactTextString(m) }
 func (*PrivateShare) ProtoMessage()               {}
-func (*PrivateShare) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{5} }
+func (*PrivateShare) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{6} }
 
-func (m *PrivateShare) GetContent() string {
+func (m *PrivateShare) GetContent() *ByteContent {
 	if m != nil {
 		return m.Content
 	}
-	return ""
+	return nil
+}
+
+func (m *PrivateShare) GetSignature() *ByteContent {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
 }
 
 func (m *PrivateShare) GetReceiver() string {
 	if m != nil {
 		return m.Receiver
+	}
+	return ""
+}
+
+func (m *PrivateShare) GetSigner() string {
+	if m != nil {
+		return m.Signer
 	}
 	return ""
 }
@@ -166,7 +215,7 @@ type CreateSecretRequest struct {
 func (m *CreateSecretRequest) Reset()                    { *m = CreateSecretRequest{} }
 func (m *CreateSecretRequest) String() string            { return proto.CompactTextString(m) }
 func (*CreateSecretRequest) ProtoMessage()               {}
-func (*CreateSecretRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{6} }
+func (*CreateSecretRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{7} }
 
 func (m *CreateSecretRequest) GetCipherText() *CipherText {
 	if m != nil {
@@ -189,7 +238,7 @@ type PlainSecret struct {
 func (m *PlainSecret) Reset()                    { *m = PlainSecret{} }
 func (m *PlainSecret) String() string            { return proto.CompactTextString(m) }
 func (*PlainSecret) ProtoMessage()               {}
-func (*PlainSecret) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{7} }
+func (*PlainSecret) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{8} }
 
 func (m *PlainSecret) GetSecretId() string {
 	if m != nil {
@@ -205,7 +254,7 @@ type GetSecretRequest struct {
 func (m *GetSecretRequest) Reset()                    { *m = GetSecretRequest{} }
 func (m *GetSecretRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetSecretRequest) ProtoMessage()               {}
-func (*GetSecretRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{8} }
+func (*GetSecretRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{9} }
 
 func (m *GetSecretRequest) GetSecretId() string {
 	if m != nil {
@@ -221,7 +270,7 @@ type GetPublicSharesRequest struct {
 func (m *GetPublicSharesRequest) Reset()                    { *m = GetPublicSharesRequest{} }
 func (m *GetPublicSharesRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetPublicSharesRequest) ProtoMessage()               {}
-func (*GetPublicSharesRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{9} }
+func (*GetPublicSharesRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{10} }
 
 func (m *GetPublicSharesRequest) GetSecretId() string {
 	if m != nil {
@@ -238,7 +287,7 @@ type GetPrivateSharesRequest struct {
 func (m *GetPrivateSharesRequest) Reset()                    { *m = GetPrivateSharesRequest{} }
 func (m *GetPrivateSharesRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetPrivateSharesRequest) ProtoMessage()               {}
-func (*GetPrivateSharesRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{10} }
+func (*GetPrivateSharesRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{11} }
 
 func (m *GetPrivateSharesRequest) GetSecretId() string {
 	if m != nil {
@@ -261,7 +310,7 @@ type GetCipherTextRequest struct {
 func (m *GetCipherTextRequest) Reset()                    { *m = GetCipherTextRequest{} }
 func (m *GetCipherTextRequest) String() string            { return proto.CompactTextString(m) }
 func (*GetCipherTextRequest) ProtoMessage()               {}
-func (*GetCipherTextRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{11} }
+func (*GetCipherTextRequest) Descriptor() ([]byte, []int) { return fileDescriptorApi, []int{12} }
 
 func (m *GetCipherTextRequest) GetSecretId() string {
 	if m != nil {
@@ -271,6 +320,7 @@ func (m *GetCipherTextRequest) GetSecretId() string {
 }
 
 func init() {
+	proto.RegisterType((*ByteContent)(nil), "apipb.ByteContent")
 	proto.RegisterType((*CipherText)(nil), "apipb.CipherText")
 	proto.RegisterType((*Shares)(nil), "apipb.Shares")
 	proto.RegisterType((*PublicShares)(nil), "apipb.PublicShares")
@@ -489,6 +539,30 @@ var _API_serviceDesc = grpc.ServiceDesc{
 	Metadata: "pkg/api/apipb/api.proto",
 }
 
+func (m *ByteContent) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ByteContent) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Bytes) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintApi(dAtA, i, uint64(len(m.Bytes)))
+		i += copy(dAtA[i:], m.Bytes)
+	}
+	return i, nil
+}
+
 func (m *CipherText) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -504,11 +578,15 @@ func (m *CipherText) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.Content) > 0 {
+	if m.Content != nil {
 		dAtA[i] = 0xa
 		i++
-		i = encodeVarintApi(dAtA, i, uint64(len(m.Content)))
-		i += copy(dAtA[i:], m.Content)
+		i = encodeVarintApi(dAtA, i, uint64(m.Content.Size()))
+		n1, err := m.Content.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
 	}
 	return i, nil
 }
@@ -532,21 +610,21 @@ func (m *Shares) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0xa
 		i++
 		i = encodeVarintApi(dAtA, i, uint64(m.Public.Size()))
-		n1, err := m.Public.MarshalTo(dAtA[i:])
+		n2, err := m.Public.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n1
+		i += n2
 	}
 	if m.Private != nil {
 		dAtA[i] = 0x12
 		i++
 		i = encodeVarintApi(dAtA, i, uint64(m.Private.Size()))
-		n2, err := m.Private.MarshalTo(dAtA[i:])
+		n3, err := m.Private.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n2
+		i += n3
 	}
 	return i, nil
 }
@@ -626,11 +704,31 @@ func (m *PublicShare) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.Content) > 0 {
+	if m.Content != nil {
 		dAtA[i] = 0xa
 		i++
-		i = encodeVarintApi(dAtA, i, uint64(len(m.Content)))
-		i += copy(dAtA[i:], m.Content)
+		i = encodeVarintApi(dAtA, i, uint64(m.Content.Size()))
+		n4, err := m.Content.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
+	}
+	if m.Signature != nil {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintApi(dAtA, i, uint64(m.Signature.Size()))
+		n5, err := m.Signature.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n5
+	}
+	if len(m.Signer) > 0 {
+		dAtA[i] = 0x1a
+		i++
+		i = encodeVarintApi(dAtA, i, uint64(len(m.Signer)))
+		i += copy(dAtA[i:], m.Signer)
 	}
 	return i, nil
 }
@@ -650,17 +748,37 @@ func (m *PrivateShare) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.Content) > 0 {
+	if m.Content != nil {
 		dAtA[i] = 0xa
 		i++
-		i = encodeVarintApi(dAtA, i, uint64(len(m.Content)))
-		i += copy(dAtA[i:], m.Content)
+		i = encodeVarintApi(dAtA, i, uint64(m.Content.Size()))
+		n6, err := m.Content.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
+	}
+	if m.Signature != nil {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintApi(dAtA, i, uint64(m.Signature.Size()))
+		n7, err := m.Signature.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n7
 	}
 	if len(m.Receiver) > 0 {
-		dAtA[i] = 0x12
+		dAtA[i] = 0x1a
 		i++
 		i = encodeVarintApi(dAtA, i, uint64(len(m.Receiver)))
 		i += copy(dAtA[i:], m.Receiver)
+	}
+	if len(m.Signer) > 0 {
+		dAtA[i] = 0x22
+		i++
+		i = encodeVarintApi(dAtA, i, uint64(len(m.Signer)))
+		i += copy(dAtA[i:], m.Signer)
 	}
 	return i, nil
 }
@@ -684,21 +802,21 @@ func (m *CreateSecretRequest) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0xa
 		i++
 		i = encodeVarintApi(dAtA, i, uint64(m.CipherText.Size()))
-		n3, err := m.CipherText.MarshalTo(dAtA[i:])
+		n8, err := m.CipherText.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n3
+		i += n8
 	}
 	if m.Shares != nil {
 		dAtA[i] = 0x12
 		i++
 		i = encodeVarintApi(dAtA, i, uint64(m.Shares.Size()))
-		n4, err := m.Shares.MarshalTo(dAtA[i:])
+		n9, err := m.Shares.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n4
+		i += n9
 	}
 	return i, nil
 }
@@ -856,11 +974,21 @@ func encodeVarintApi(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return offset + 1
 }
+func (m *ByteContent) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Bytes)
+	if l > 0 {
+		n += 1 + l + sovApi(uint64(l))
+	}
+	return n
+}
+
 func (m *CipherText) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.Content)
-	if l > 0 {
+	if m.Content != nil {
+		l = m.Content.Size()
 		n += 1 + l + sovApi(uint64(l))
 	}
 	return n
@@ -907,7 +1035,15 @@ func (m *PrivateShares) Size() (n int) {
 func (m *PublicShare) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.Content)
+	if m.Content != nil {
+		l = m.Content.Size()
+		n += 1 + l + sovApi(uint64(l))
+	}
+	if m.Signature != nil {
+		l = m.Signature.Size()
+		n += 1 + l + sovApi(uint64(l))
+	}
+	l = len(m.Signer)
 	if l > 0 {
 		n += 1 + l + sovApi(uint64(l))
 	}
@@ -917,11 +1053,19 @@ func (m *PublicShare) Size() (n int) {
 func (m *PrivateShare) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.Content)
-	if l > 0 {
+	if m.Content != nil {
+		l = m.Content.Size()
+		n += 1 + l + sovApi(uint64(l))
+	}
+	if m.Signature != nil {
+		l = m.Signature.Size()
 		n += 1 + l + sovApi(uint64(l))
 	}
 	l = len(m.Receiver)
+	if l > 0 {
+		n += 1 + l + sovApi(uint64(l))
+	}
+	l = len(m.Signer)
 	if l > 0 {
 		n += 1 + l + sovApi(uint64(l))
 	}
@@ -1009,6 +1153,87 @@ func sovApi(x uint64) (n int) {
 func sozApi(x uint64) (n int) {
 	return sovApi(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
+func (m *ByteContent) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowApi
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ByteContent: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ByteContent: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Bytes", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Bytes = append(m.Bytes[:0], dAtA[iNdEx:postIndex]...)
+			if m.Bytes == nil {
+				m.Bytes = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipApi(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *CipherText) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -1042,7 +1267,7 @@ func (m *CipherText) Unmarshal(dAtA []byte) error {
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Content", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowApi
@@ -1052,20 +1277,24 @@ func (m *CipherText) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthApi
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Content = string(dAtA[iNdEx:postIndex])
+			if m.Content == nil {
+				m.Content = &ByteContent{}
+			}
+			if err := m.Content.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1399,6 +1628,72 @@ func (m *PublicShare) Unmarshal(dAtA []byte) error {
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Content", wireType)
 			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Content == nil {
+				m.Content = &ByteContent{}
+			}
+			if err := m.Content.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Signature", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Signature == nil {
+				m.Signature = &ByteContent{}
+			}
+			if err := m.Signature.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Signer", wireType)
+			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
@@ -1422,7 +1717,7 @@ func (m *PublicShare) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Content = string(dAtA[iNdEx:postIndex])
+			m.Signer = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1478,7 +1773,7 @@ func (m *PrivateShare) Unmarshal(dAtA []byte) error {
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Content", wireType)
 			}
-			var stringLen uint64
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowApi
@@ -1488,22 +1783,59 @@ func (m *PrivateShare) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
+			if msglen < 0 {
 				return ErrInvalidLengthApi
 			}
-			postIndex := iNdEx + intStringLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Content = string(dAtA[iNdEx:postIndex])
+			if m.Content == nil {
+				m.Content = &ByteContent{}
+			}
+			if err := m.Content.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Signature", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Signature == nil {
+				m.Signature = &ByteContent{}
+			}
+			if err := m.Signature.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Receiver", wireType)
 			}
@@ -1531,6 +1863,35 @@ func (m *PrivateShare) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Receiver = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Signer", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Signer = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -2201,35 +2562,39 @@ var (
 func init() { proto.RegisterFile("pkg/api/apipb/api.proto", fileDescriptorApi) }
 
 var fileDescriptorApi = []byte{
-	// 470 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x94, 0xdf, 0x6e, 0xd3, 0x30,
-	0x14, 0xc6, 0x93, 0x4d, 0xeb, 0x96, 0x93, 0x56, 0x8c, 0xd3, 0x89, 0x56, 0x19, 0x44, 0x93, 0x25,
-	0xa0, 0x80, 0xd4, 0x49, 0x9d, 0x90, 0xd0, 0xae, 0x18, 0x43, 0x8a, 0xc6, 0x55, 0x15, 0x76, 0x3f,
-	0xa5, 0xd9, 0x11, 0xb3, 0x18, 0xad, 0x71, 0xbc, 0x69, 0x8f, 0xc2, 0x23, 0x71, 0xc9, 0x3d, 0x37,
-	0xa8, 0xbc, 0xc8, 0x14, 0xc7, 0xf9, 0xb7, 0x64, 0x55, 0x2f, 0x5a, 0xc5, 0x27, 0xdf, 0xf9, 0x6c,
-	0xff, 0x3e, 0x3b, 0x30, 0x10, 0xdf, 0xbf, 0x1d, 0x46, 0x82, 0xa7, 0x3f, 0x31, 0x4b, 0xff, 0xc7,
-	0x42, 0x2e, 0xd4, 0x02, 0xb7, 0x74, 0x81, 0xbd, 0x02, 0x38, 0xe5, 0xe2, 0x8a, 0xe4, 0x39, 0xdd,
-	0x29, 0x1c, 0xc2, 0x76, 0xbc, 0x98, 0x2b, 0x9a, 0xab, 0xa1, 0x7d, 0x60, 0x8f, 0x9c, 0x30, 0x1f,
-	0x32, 0x82, 0xce, 0xd7, 0xab, 0x48, 0x52, 0x82, 0xef, 0xa0, 0x23, 0x6e, 0x66, 0xd7, 0x3c, 0xd6,
-	0x12, 0x77, 0xd2, 0x1f, 0x6b, 0xa7, 0xf1, 0x54, 0x17, 0x33, 0x51, 0x68, 0x24, 0x38, 0x86, 0x6d,
-	0x21, 0xf9, 0x6d, 0xa4, 0x68, 0xb8, 0xa1, 0xd5, 0x7b, 0xb9, 0x3a, 0xab, 0x1a, 0x79, 0x2e, 0x62,
-	0x1f, 0xa0, 0x5b, 0xf5, 0xc1, 0x11, 0x6c, 0x71, 0x45, 0x3f, 0x92, 0xa1, 0x7d, 0xb0, 0x39, 0x72,
-	0x27, 0xd8, 0x9c, 0x2b, 0xcc, 0x04, 0xec, 0x18, 0x7a, 0x35, 0x4f, 0x7c, 0x53, 0x6f, 0xed, 0xb7,
-	0x4c, 0x9c, 0xf7, 0xbe, 0x06, 0xb7, 0xe2, 0xb8, 0x82, 0xc2, 0x67, 0xe8, 0x56, 0xfb, 0x1f, 0x57,
-	0xa2, 0x07, 0x3b, 0x92, 0x62, 0xe2, 0xb7, 0x24, 0xf5, 0xce, 0x9d, 0xb0, 0x18, 0x33, 0x01, 0xfd,
-	0x53, 0x49, 0xa9, 0x09, 0xc5, 0x92, 0x54, 0x48, 0x3f, 0x6f, 0x28, 0x51, 0x38, 0x01, 0x37, 0xd6,
-	0x51, 0x5c, 0x28, 0xba, 0x53, 0x86, 0xee, 0x53, 0xb3, 0xec, 0x32, 0xa4, 0x10, 0xe2, 0x32, 0xb0,
-	0x97, 0xd0, 0x49, 0xf4, 0x76, 0x0d, 0xde, 0x9e, 0x91, 0xe7, 0x31, 0x64, 0x2f, 0xd9, 0x5b, 0x70,
-	0xa7, 0xd7, 0x11, 0x9f, 0x67, 0x13, 0xe2, 0x3e, 0x38, 0x89, 0x7e, 0xba, 0xe0, 0x97, 0x66, 0xe1,
-	0x3b, 0x59, 0xe1, 0xec, 0x92, 0x1d, 0xc2, 0x6e, 0x40, 0xaa, 0xbe, 0xb4, 0x95, 0x0d, 0xef, 0xe1,
-	0x59, 0x40, 0xaa, 0x16, 0xff, 0x3a, 0x6d, 0xe7, 0x30, 0x48, 0xdb, 0x6a, 0xe7, 0x60, 0x8d, 0x3e,
-	0x7c, 0x0e, 0x8e, 0xcc, 0x74, 0x05, 0xda, 0xb2, 0xc0, 0x8e, 0x60, 0x2f, 0x20, 0x55, 0xa1, 0xb5,
-	0x86, 0xe5, 0xe4, 0xef, 0x06, 0x6c, 0x9e, 0x4c, 0xcf, 0xf0, 0x23, 0x74, 0xab, 0xc1, 0xa0, 0x97,
-	0xc3, 0x6f, 0xa6, 0xe5, 0x15, 0x47, 0xb1, 0xe4, 0xca, 0x2c, 0x3c, 0x06, 0xa7, 0x80, 0x87, 0x03,
-	0x23, 0x79, 0x88, 0xf3, 0x91, 0xde, 0x00, 0x9e, 0x3c, 0xe0, 0x88, 0x2f, 0x4a, 0x87, 0x16, 0xbe,
-	0x5e, 0xdb, 0xd5, 0x63, 0x16, 0x7e, 0xd1, 0x09, 0xd6, 0x6f, 0x83, 0x5f, 0x71, 0x6a, 0x41, 0xee,
-	0xb5, 0xde, 0x4b, 0x66, 0xe1, 0x09, 0xf4, 0x6a, 0x3c, 0x71, 0xbf, 0x34, 0x6a, 0x50, 0xf6, 0x9a,
-	0xa7, 0x95, 0x59, 0x9f, 0x76, 0x7f, 0x2f, 0x7d, 0xfb, 0xcf, 0xd2, 0xb7, 0xff, 0x2d, 0x7d, 0xfb,
-	0xd7, 0x7f, 0xdf, 0x9a, 0x75, 0xf4, 0x27, 0xe8, 0xe8, 0x3e, 0x00, 0x00, 0xff, 0xff, 0xc6, 0xb2,
-	0x84, 0x1d, 0x9d, 0x04, 0x00, 0x00,
+	// 535 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x54, 0xcd, 0x6e, 0xd3, 0x4c,
+	0x14, 0xb5, 0x9b, 0x2f, 0x6e, 0x7d, 0x9d, 0xe8, 0x2b, 0x37, 0x51, 0x13, 0xb9, 0x60, 0x55, 0x83,
+	0x90, 0xc2, 0x8f, 0x52, 0x94, 0x0a, 0x09, 0x65, 0x45, 0x9b, 0x45, 0x54, 0x56, 0x91, 0xe9, 0xbe,
+	0x72, 0xdc, 0xab, 0xd6, 0xa2, 0x24, 0x66, 0x3c, 0xa9, 0xda, 0x07, 0xe0, 0x1d, 0x58, 0xf3, 0x34,
+	0x2c, 0xd9, 0xb3, 0x41, 0xe1, 0x45, 0x90, 0xc7, 0xe3, 0x78, 0xdc, 0x18, 0x14, 0x16, 0x2c, 0x12,
+	0x65, 0x6e, 0xce, 0x39, 0x73, 0xe6, 0xdc, 0x3b, 0x03, 0x9d, 0xf8, 0xfd, 0xe5, 0x61, 0x10, 0x47,
+	0xe9, 0x27, 0x9e, 0xa6, 0xdf, 0xfd, 0x98, 0xcf, 0xc5, 0x1c, 0xeb, 0xb2, 0xc0, 0x1e, 0x83, 0x73,
+	0x72, 0x27, 0x68, 0x34, 0x9f, 0x09, 0x9a, 0x09, 0x6c, 0x43, 0x7d, 0x7a, 0x27, 0x28, 0xe9, 0x9a,
+	0x07, 0x66, 0xaf, 0xe1, 0x67, 0x0b, 0x36, 0x04, 0x18, 0x45, 0xf1, 0x15, 0xf1, 0x33, 0xba, 0x15,
+	0xf8, 0x02, 0xb6, 0xc3, 0x0c, 0x2e, 0x51, 0xce, 0x00, 0xfb, 0x52, 0xab, 0xaf, 0x09, 0xf9, 0x39,
+	0x84, 0x11, 0x58, 0xef, 0xae, 0x02, 0x4e, 0x09, 0x3e, 0x07, 0x2b, 0x5e, 0x4c, 0xaf, 0xa3, 0x50,
+	0xd1, 0x5a, 0x8a, 0x36, 0x91, 0xc5, 0x0c, 0xe4, 0x2b, 0x08, 0xf6, 0x61, 0x3b, 0xe6, 0xd1, 0x4d,
+	0x20, 0xa8, 0xbb, 0x25, 0xd1, 0xed, 0x1c, 0x9d, 0x55, 0x15, 0x3c, 0x07, 0xb1, 0xd7, 0xd0, 0xd0,
+	0x75, 0xb0, 0x07, 0xf5, 0x48, 0xd0, 0x87, 0xf4, 0x20, 0x35, 0xcd, 0xa2, 0x86, 0xf1, 0x33, 0x00,
+	0x1b, 0x42, 0xb3, 0xa4, 0x89, 0x4f, 0xcb, 0xd4, 0x56, 0xc5, 0xc6, 0x39, 0xf7, 0x93, 0x09, 0x8e,
+	0x26, 0xf9, 0x77, 0xd1, 0xe0, 0x4b, 0xb0, 0x93, 0xe8, 0x72, 0x16, 0x88, 0x05, 0xcf, 0x4f, 0x59,
+	0x85, 0x2f, 0x40, 0xb8, 0x07, 0x56, 0xba, 0x20, 0xde, 0xad, 0x1d, 0x98, 0x3d, 0xdb, 0x57, 0x2b,
+	0xf6, 0xc5, 0x84, 0x86, 0xee, 0xef, 0x9f, 0x1b, 0x71, 0x61, 0x87, 0x53, 0x48, 0xd1, 0xcd, 0xca,
+	0xca, 0x6a, 0xad, 0x99, 0xfc, 0xaf, 0x64, 0x32, 0x86, 0xd6, 0x88, 0x53, 0x6a, 0x91, 0x42, 0x4e,
+	0xc2, 0xa7, 0x8f, 0x0b, 0x4a, 0x04, 0x0e, 0xc0, 0x09, 0xe5, 0x70, 0x9d, 0x0b, 0xba, 0xcd, 0xed,
+	0x3e, 0x50, 0xdb, 0x17, 0x63, 0xe7, 0x43, 0x58, 0x8c, 0xe0, 0x13, 0xb0, 0x12, 0xd9, 0x2c, 0xe5,
+	0xb6, 0xa9, 0xe0, 0xf9, 0x10, 0x65, 0x7f, 0xb2, 0x67, 0xe0, 0x4c, 0xae, 0x83, 0x68, 0x96, 0x6d,
+	0x88, 0xfb, 0x60, 0x27, 0xf2, 0xd7, 0x79, 0x74, 0x21, 0xf7, 0xb1, 0xfd, 0x9d, 0xac, 0x70, 0x7a,
+	0xc1, 0x0e, 0x61, 0x77, 0x4c, 0xa2, 0x6c, 0xed, 0x8f, 0x84, 0x57, 0xb0, 0x37, 0x26, 0x51, 0x1a,
+	0xde, 0x4d, 0x68, 0x67, 0xd0, 0x49, 0x69, 0xa5, 0x29, 0xde, 0x80, 0x87, 0x0f, 0xc1, 0xe6, 0x19,
+	0x8e, 0xb8, 0x3c, 0xb5, 0xed, 0x17, 0x05, 0x76, 0x04, 0xed, 0x31, 0x09, 0x2d, 0xad, 0x0d, 0x24,
+	0x07, 0xdf, 0xb7, 0xa0, 0x76, 0x3c, 0x39, 0xc5, 0x37, 0xd0, 0xd0, 0x1b, 0x83, 0x6e, 0x1e, 0xfe,
+	0x7a, 0xb7, 0xdc, 0xd5, 0x45, 0x2a, 0x72, 0x65, 0x06, 0x0e, 0xc1, 0x5e, 0x85, 0x87, 0x1d, 0x05,
+	0xb9, 0x1f, 0xe7, 0x6f, 0xb8, 0x63, 0xf8, 0xff, 0x5e, 0x8e, 0xf8, 0xa8, 0x50, 0xa8, 0xc8, 0xd7,
+	0xad, 0x7a, 0x38, 0x98, 0x81, 0x6f, 0x65, 0x07, 0xcb, 0x77, 0xd9, 0xd3, 0x94, 0x2a, 0x22, 0x77,
+	0x2b, 0x5f, 0x15, 0x66, 0xe0, 0x31, 0x34, 0x4b, 0x79, 0xe2, 0x7e, 0x21, 0xb4, 0x96, 0xb2, 0xbb,
+	0x3e, 0xad, 0xcc, 0x38, 0xd9, 0xfd, 0xba, 0xf4, 0xcc, 0x6f, 0x4b, 0xcf, 0xfc, 0xb1, 0xf4, 0xcc,
+	0xcf, 0x3f, 0x3d, 0x63, 0x6a, 0xc9, 0x97, 0xf7, 0xe8, 0x57, 0x00, 0x00, 0x00, 0xff, 0xff, 0xcd,
+	0xe3, 0xac, 0xfa, 0x94, 0x05, 0x00, 0x00,
 }

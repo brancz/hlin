@@ -15,8 +15,6 @@
 package api
 
 import (
-	"crypto/rsa"
-
 	pb "github.com/brancz/hlin/pkg/api/apipb"
 	"github.com/brancz/hlin/pkg/crypto"
 	"github.com/brancz/hlin/pkg/store"
@@ -71,15 +69,15 @@ func (a *API) GetPublicShares(ctx context.Context, r *pb.GetPublicSharesRequest)
 }
 
 func (a *API) GetPrivateShares(ctx context.Context, r *pb.GetPrivateSharesRequest) (*pb.PrivateShares, error) {
-	pubKey, err := a.keyStore.PublicKey(r.Requester)
-	if err == store.PublicKeyNotFound {
+	p, err := a.keyStore.Participant(r.Requester)
+	if err == store.ParticipantNotFound {
 		return nil, grpc.Errorf(codes.NotFound, "key for requester not found")
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := a.secretStore.GetPrivateShares(ctx, r.SecretId, a.keyStore.Certificate().Subject.CommonName)
+	s, err := a.secretStore.GetPrivateShares(ctx, r.SecretId, a.keyStore.Encryptor().Identifier())
 	if err == store.SharesNotFound {
 		return nil, grpc.Errorf(codes.NotFound, "private shares not found")
 	}
@@ -88,12 +86,15 @@ func (a *API) GetPrivateShares(ctx context.Context, r *pb.GetPrivateSharesReques
 	}
 
 	for i := range s.Items {
-		plaintext, err := crypto.DecryptPrivateShare(a.keyStore.PrivateKey().PrivateKey.(*rsa.PrivateKey), []byte(s.Items[i].Content))
+		plaintext, err := a.keyStore.Encryptor().Decrypt(s.Items[i].Content.Bytes)
 		if err != nil {
 			return nil, err
 		}
-		encryptedPrivateShare, err := crypto.EncryptPrivateShare(pubKey, plaintext)
-		s.Items[i].Content = string(encryptedPrivateShare)
+		encryptedPrivateShare, err := crypto.EncryptPrivateShare(a.keyStore.Encryptor(), p, plaintext)
+		if err != nil {
+			return nil, err
+		}
+		s.Items[i] = encryptedPrivateShare
 	}
 
 	return s, nil

@@ -15,47 +15,39 @@
 package store
 
 import (
-	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
+
+	"github.com/brancz/hlin/pkg/crypto"
 )
 
-var PublicKeyNotFound = errors.New("public key not found")
+var ParticipantNotFound = errors.New("participant not found")
 
 type KeyStore interface {
-	PublicKey(identity string) (*rsa.PublicKey, error)
-	PrivateKey() tls.Certificate
-	Certificate() *x509.Certificate
+	Participant(identifier string) (crypto.Participant, error)
+	Encryptor() crypto.Encryptor
 }
 
 type MemoryKeyStore struct {
-	store   map[string]*rsa.PublicKey
-	tlsCert tls.Certificate
-	cert    *x509.Certificate
+	store     map[string]crypto.Participant
+	encryptor crypto.Encryptor
 }
 
-func NewMemoryKeyStore(store map[string]*rsa.PublicKey, tlsCert tls.Certificate, cert *x509.Certificate) KeyStore {
+func NewMemoryKeyStore(store map[string]crypto.Participant, encryptor crypto.Encryptor) KeyStore {
 	return &MemoryKeyStore{
-		store:   store,
-		tlsCert: tlsCert,
-		cert:    cert,
+		store:     store,
+		encryptor: encryptor,
 	}
 }
 
-func (s *MemoryKeyStore) PublicKey(identity string) (*rsa.PublicKey, error) {
-	k, found := s.store[identity]
+func (s *MemoryKeyStore) Participant(identifier string) (crypto.Participant, error) {
+	p, found := s.store[identifier]
 	if !found {
-		return nil, PublicKeyNotFound
+		return nil, ParticipantNotFound
 	}
 
-	return k, nil
+	return p, nil
 }
 
-func (s *MemoryKeyStore) PrivateKey() tls.Certificate {
-	return s.tlsCert
-}
-
-func (s *MemoryKeyStore) Certificate() *x509.Certificate {
-	return s.cert
+func (s *MemoryKeyStore) Encryptor() crypto.Encryptor {
+	return s.encryptor
 }

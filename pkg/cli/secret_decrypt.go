@@ -15,9 +15,6 @@
 package cli
 
 import (
-	"bytes"
-	"crypto/rsa"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -52,24 +49,12 @@ func NewCmdSecretDecrypt(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatal(err)
 			}
 
-			certificate, err := tls.LoadX509KeyPair(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
-			privateKey := certificate.PrivateKey.(*rsa.PrivateKey)
+			encryptor, err := crypto.LoadTLSEncryptor(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			cipherText := bytes.NewBuffer([]byte(secret.CipherText.Content))
-			publicShares := make([]io.Reader, len(secret.Shares.Public.Items))
-			privateShares := make([]io.Reader, len(secret.Shares.Private.Items))
-
-			for i := range secret.Shares.Private.Items {
-				privateShares[i] = bytes.NewBuffer([]byte(secret.Shares.Private.Items[i].Content))
-			}
-			for i := range secret.Shares.Public.Items {
-				publicShares[i] = bytes.NewBuffer([]byte(secret.Shares.Public.Items[i].Content))
-			}
-
-			r, err := crypto.Decrypt(privateKey, cipherText, publicShares, privateShares)
+			r, err := crypto.Decrypt(encryptor, secret.CipherText.Content.Bytes, secret.Shares)
 			if err != nil {
 				log.Fatal(err)
 			}

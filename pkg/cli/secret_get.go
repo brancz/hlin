@@ -15,10 +15,6 @@
 package cli
 
 import (
-	"bytes"
-	"crypto/rsa"
-	"crypto/tls"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -39,22 +35,8 @@ type GetSecretCmdOptions struct {
 }
 
 type secret struct {
-	CipherText    *cipherText     `json:"cipherText,omitempty"`
-	PublicShares  []*publicShare  `json:"publicShares,omitempty"`
-	PrivateShares []*privateShare `json:"privateShares,omitempty"`
-}
-
-type cipherText struct {
-	Content string `json:"content,omitempty"`
-}
-
-type publicShare struct {
-	Content string `json:"content,omitempty"`
-}
-
-type privateShare struct {
-	Content  string `json:"content,omitempty"`
-	Receiver string `json:"receiver,omitempty"`
+	CipherText *pb.CipherText `json:"cipherText,omitempty"`
+	Shares     *pb.Shares     `json:"shares,omitempty"`
 }
 
 func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
@@ -89,13 +71,12 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatalf("getting public shares failed: %s", err)
 			}
 
-			certificate, err := tls.LoadX509KeyPair(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
-			privateKey := certificate.PrivateKey.(*rsa.PrivateKey)
+			encryptor, err := crypto.LoadTLSEncryptor(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			cert, err := crypto.LoadCertificate(cfg.TLSConfig.CertFile)
+			cert, err := crypto.LoadX509Certificate(cfg.TLSConfig.CertFile)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -120,18 +101,15 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatalf("getting cipher text failed: %s", err)
 			}
 
+			shares := &pb.Shares{
+				Public:  pubShares,
+				Private: &pb.PrivateShares{Items: privShares},
+			}
+
 			if options.NoDecrypt {
 				s := &secret{
-					CipherText:    &cipherText{Content: ct.Content},
-					PublicShares:  []*publicShare{},
-					PrivateShares: []*privateShare{},
-				}
-
-				for i := range pubShares.Items {
-					s.PublicShares = append(s.PublicShares, &publicShare{Content: pubShares.Items[i].Content})
-				}
-				for i := range privShares {
-					s.PrivateShares = append(s.PrivateShares, &privateShare{Content: base64.StdEncoding.EncodeToString([]byte(privShares[i].Content))})
+					CipherText: ct,
+					Shares:     shares,
 				}
 
 				j, err := json.Marshal(*s)
@@ -143,18 +121,7 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 				return
 			}
 
-			cipherText := bytes.NewBuffer([]byte(ct.Content))
-			publicShares := make([]io.Reader, len(pubShares.Items))
-			privateShares := make([]io.Reader, len(privShares))
-
-			for i := range pubShares.Items {
-				publicShares[i] = bytes.NewBuffer([]byte(pubShares.Items[i].Content))
-			}
-			for i := range privShares {
-				privateShares[i] = bytes.NewBuffer([]byte(privShares[i].Content))
-			}
-
-			r, err := crypto.Decrypt(privateKey, cipherText, publicShares, privateShares)
+			r, err := crypto.Decrypt(encryptor, ct.Content.Bytes, shares)
 			if err != nil {
 				log.Fatalf("decrypting secret failed: %s", err)
 			}
