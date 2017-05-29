@@ -28,11 +28,11 @@ import (
 
 type API struct {
 	secretStore store.SecretStore
-	keyStore    store.KeyStore
+	keyStore    crypto.KeyStore
 	logger      log.Logger
 }
 
-func NewAPIServer(logger log.Logger, sStore store.SecretStore, kStore store.KeyStore) pb.APIServer {
+func NewAPIServer(logger log.Logger, sStore store.SecretStore, kStore crypto.KeyStore) pb.APIServer {
 	return &API{
 		secretStore: sStore,
 		logger:      logger,
@@ -70,7 +70,7 @@ func (a *API) GetPublicShares(ctx context.Context, r *pb.GetPublicSharesRequest)
 
 func (a *API) GetPrivateShares(ctx context.Context, r *pb.GetPrivateSharesRequest) (*pb.PrivateShares, error) {
 	p, err := a.keyStore.Participant(r.Requester)
-	if err == store.ParticipantNotFound {
+	if err == crypto.ParticipantNotFound {
 		return nil, grpc.Errorf(codes.NotFound, "key for requester not found")
 	}
 	if err != nil {

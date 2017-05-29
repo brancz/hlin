@@ -49,12 +49,12 @@ func NewCmdSecretDecrypt(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatal(err)
 			}
 
-			encryptor, err := crypto.LoadTLSEncryptor(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
+			keyStore, err := crypto.KeyStoreFromConfig(cfg)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			r, err := crypto.Decrypt(encryptor, secret.CipherText.Content.Bytes, secret.Shares)
+			r, err := crypto.Decrypt(keyStore, secret.CipherText.Content.Bytes, secret.Shares)
 			if err != nil {
 				log.Fatal(err)
 			}

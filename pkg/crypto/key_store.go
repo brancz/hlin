@@ -12,34 +12,51 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package store
+package crypto
 
 import (
 	"errors"
 
-	"github.com/brancz/hlin/pkg/crypto"
+	"github.com/brancz/hlin/pkg/config"
 )
 
 var ParticipantNotFound = errors.New("participant not found")
 
 type KeyStore interface {
-	Participant(identifier string) (crypto.Participant, error)
-	Encryptor() crypto.Encryptor
+	Participant(identifier string) (Participant, error)
+	Encryptor() Encryptor
 }
 
 type MemoryKeyStore struct {
-	store     map[string]crypto.Participant
-	encryptor crypto.Encryptor
+	store     map[string]Participant
+	encryptor Encryptor
 }
 
-func NewMemoryKeyStore(store map[string]crypto.Participant, encryptor crypto.Encryptor) KeyStore {
+func KeyStoreFromConfig(cfg *config.Config) (KeyStore, error) {
+	encryptor, err := LoadTLSEncryptor(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	participants := make(map[string]Participant, len(cfg.Members))
+	for _, member := range cfg.Members {
+		p, err := LoadX509Participant(member.CertFile)
+		if err != nil {
+			return nil, err
+		}
+		participants[p.Identifier()] = p
+	}
+	return NewMemoryKeyStore(participants, encryptor), nil
+}
+
+func NewMemoryKeyStore(store map[string]Participant, encryptor Encryptor) KeyStore {
 	return &MemoryKeyStore{
 		store:     store,
 		encryptor: encryptor,
 	}
 }
 
-func (s *MemoryKeyStore) Participant(identifier string) (crypto.Participant, error) {
+func (s *MemoryKeyStore) Participant(identifier string) (Participant, error) {
 	p, found := s.store[identifier]
 	if !found {
 		return nil, ParticipantNotFound
@@ -48,6 +65,6 @@ func (s *MemoryKeyStore) Participant(identifier string) (crypto.Participant, err
 	return p, nil
 }
 
-func (s *MemoryKeyStore) Encryptor() crypto.Encryptor {
+func (s *MemoryKeyStore) Encryptor() Encryptor {
 	return s.encryptor
 }

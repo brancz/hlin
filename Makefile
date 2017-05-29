@@ -7,6 +7,7 @@ OUT_DIR=_output
 BIN?=hlin
 COMPONENT?=server
 VERSION?=$(shell cat VERSION)
+PKGS=$(shell go list ./... | grep -v /vendor/)
 
 check-license:
 	@echo ">> checking license headers"
@@ -31,6 +32,10 @@ compile-server:
 compile-client:
 	@$(MAKE) -s compile COMPONENT=client BIN=hlinctl
 
+test:
+	@echo ">> running all tests"
+	@go test $(PKGS)
+
 proto:
 	protoc --gofast_out=plugins=grpc:. pkg/api/apipb/api.proto
 
@@ -46,4 +51,4 @@ devcerts:
 	certstrap --depot-path "_output/certs" request-cert --ip 127.0.0.1 --common-name client --passphrase ""
 	certstrap --depot-path "_output/certs" sign --CA "ca" client
 
-.PHONY: all check-license compile build crossbuild build-api
+.PHONY: all check-license compile build crossbuild build-api test

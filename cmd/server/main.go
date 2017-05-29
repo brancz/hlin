@@ -98,7 +98,7 @@ func Main() int {
 		}
 		participants[p.Identifier()] = p
 	}
-	keyStore := store.NewMemoryKeyStore(participants, encryptor)
+	keyStore := crypto.NewMemoryKeyStore(participants, encryptor)
 
 	certPool := x509.NewCertPool()
 	bs, err := ioutil.ReadFile(opts.caFile)

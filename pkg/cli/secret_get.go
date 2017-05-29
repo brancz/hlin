@@ -16,7 +16,6 @@ package cli
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -65,18 +64,15 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 				clients[i] = pb.NewAPIClient(conn)
 			}
 
+			secretId := args[0]
+
 			// TODO(brancz): try for all servers and use first successful response
-			pubShares, err := clients[0].GetPublicShares(ctx, &pb.GetPublicSharesRequest{SecretId: args[0]})
+			pubShares, err := clients[0].GetPublicShares(ctx, &pb.GetPublicSharesRequest{SecretId: secretId})
 			if err != nil {
 				log.Fatalf("getting public shares failed: %s", err)
 			}
 
-			encryptor, err := crypto.LoadTLSEncryptor(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			cert, err := crypto.LoadX509Certificate(cfg.TLSConfig.CertFile)
+			keyStore, err := crypto.KeyStoreFromConfig(cfg)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -85,7 +81,7 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 			for _, client := range clients {
 				privSharesRes, err := client.GetPrivateShares(ctx, &pb.GetPrivateSharesRequest{
 					SecretId:  args[0],
-					Requester: cert.Subject.CommonName,
+					Requester: keyStore.Encryptor().Identifier(),
 				})
 				if err != nil {
 					log.Fatalf("getting private shares failed: %s", err)
@@ -121,7 +117,7 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 				return
 			}
 
-			r, err := crypto.Decrypt(encryptor, ct.Content.Bytes, shares)
+			r, err := crypto.Decrypt(keyStore, ct.Content.Bytes, shares)
 			if err != nil {
 				log.Fatalf("decrypting secret failed: %s", err)
 			}
@@ -131,7 +127,7 @@ func NewCmdSecretGet(in io.Reader, out io.Writer) *cobra.Command {
 				log.Fatalf("reading the decrypted message failed: %s", err)
 			}
 
-			fmt.Printf(string(bytes))
+			out.Write(bytes)
 		},
 	}
 

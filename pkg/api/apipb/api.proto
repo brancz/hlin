@@ -40,8 +40,9 @@ message PublicShare {
 message PrivateShare {
   ByteContent content = 1;
   ByteContent signature = 2;
-  string receiver = 3;
-  string signer = 4;
+  ByteContent hash = 3;
+  string receiver = 4;
+  string signer = 5;
 }
 
 message CreateSecretRequest {
