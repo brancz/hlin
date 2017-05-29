@@ -101,19 +101,24 @@ func SplitAndEncrypt(key []byte, encryptor Encryptor, participants []Participant
 
 	i := 0
 	for j := 0; j < numPublicShares; j++ {
-		publicShare, err := serializeShare(shares[i])
+		serializedShare, err := serializeShare(shares[i])
 		if err != nil {
 			return nil, err
 		}
 
-		publicShareSignature, err := encryptor.Sign(rand.Reader, publicShare, nil)
+		publicShareSignature, err := encryptor.Sign(rand.Reader, serializedShare, nil)
 		if err != nil {
 			return nil, err
 		}
+
+		h := sha256.New()
+		h.Write(serializedShare)
+		hash := h.Sum(nil)
 
 		res.Public.Items[j] = &pb.PublicShare{
-			Content:   &pb.ByteContent{Bytes: publicShare},
-			Signature: &pb.ByteContent{publicShareSignature},
+			Content:   &pb.ByteContent{Bytes: serializedShare},
+			Signature: &pb.ByteContent{Bytes: publicShareSignature},
+			Hash:      &pb.ByteContent{Bytes: hash},
 			Signer:    encryptor.Identifier(),
 		}
 		i++
@@ -220,7 +225,7 @@ func DecryptSharesAndCombine(keyStore KeyStore, shares *pb.Shares) ([]byte, erro
 	i := 0
 
 	for j := range shares.Public.Items {
-		sssshares[i], err = DeserializeShare(bytes.NewBuffer(shares.Public.Items[j].Content.Bytes))
+		sssshares[i], err = VerifyPublicShare(keyStore, shares.Public.Items[j])
 		if err != nil {
 			return nil, err
 		}
@@ -255,4 +260,18 @@ func DecryptAndVerifyShare(keyStore KeyStore, s *pb.PrivateShare) (*Share, error
 	}
 
 	return DeserializeShare(bytes.NewBuffer(plaintext))
+}
+
+func VerifyPublicShare(keyStore KeyStore, s *pb.PublicShare) (*Share, error) {
+	p, err := keyStore.Participant(s.Signer)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.Verify(s.Signature.Bytes, s.Hash.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return DeserializeShare(bytes.NewBuffer(s.Content.Bytes))
 }
