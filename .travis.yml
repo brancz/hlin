@@ -3,3 +3,9 @@ language: go
 go:
 - 1.8.x
 - master
+
+before_script:
+- mkdir -p /tmp/proto/bin
+- mkdir -p /tmp/proto/include
+- ./scripts/install-protobuf.sh 3.3.0 /tmp/proto
+- export PATH=$PATH:/tmp/proto/bin
