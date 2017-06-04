@@ -16,6 +16,7 @@ package crypto
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -109,6 +110,16 @@ func makeTestParticipants() []Participant {
 	}
 }
 
+func makeTestKeyStore() KeyStore {
+	store := map[string]Participant{}
+
+	for _, p := range makeTestParticipants() {
+		store[p.Identifier()] = p
+	}
+
+	return NewMemoryKeyStore(store, makeTestTLSEncryptor())
+}
+
 func TestTLSEncryptor(t *testing.T) {
 	p := makeTestX509Participant()
 	e := makeTestTLSEncryptor()
@@ -145,7 +156,7 @@ func TestEncryptionScheme(t *testing.T) {
 	}
 
 	plaintext, err := Decrypt(
-		makeTestTLSEncryptor(),
+		makeTestKeyStore(),
 		res.CipherText.Content.Bytes,
 		res.Shares,
 	)
@@ -163,6 +174,62 @@ func TestEncryptionScheme(t *testing.T) {
 	}
 }
 
+func TestEncryptionPrivateShareVerification(t *testing.T) {
+	s, err := NewEncryptionScheme(
+		makeTestTLSEncryptor(),
+		makeTestParticipants(),
+		0,
+		2,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := s.Encrypt([]byte("test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res.Shares.Private.Items[0].Signature.Bytes = []byte{1, 2, 3, 4}
+
+	_, err = Decrypt(
+		makeTestKeyStore(),
+		res.CipherText.Content.Bytes,
+		res.Shares,
+	)
+	if err != rsa.ErrVerification {
+		t.Fatal("A private share signature is broken. A verification error is expected, but did not occurred.")
+	}
+}
+
+func TestEncryptionPublicShareVerification(t *testing.T) {
+	s, err := NewEncryptionScheme(
+		makeTestTLSEncryptor(),
+		makeTestParticipants(),
+		1,
+		2,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := s.Encrypt([]byte("test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res.Shares.Public.Items[0].Signature.Bytes = []byte{1, 2, 3, 4}
+
+	_, err = Decrypt(
+		makeTestKeyStore(),
+		res.CipherText.Content.Bytes,
+		res.Shares,
+	)
+	if err != rsa.ErrVerification {
+		t.Fatal("A public share signature is broken. A verification error is expected, but did not occurred.")
+	}
+}
+
 func TestShareCrypto(t *testing.T) {
 	in := []byte("test")
 	s, err := SplitAndEncrypt(
@@ -176,7 +243,7 @@ func TestShareCrypto(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := DecryptSharesAndCombine(makeTestTLSEncryptor(), s)
+	out, err := DecryptSharesAndCombine(makeTestKeyStore(), s)
 	if err != nil {
 		t.Fatal(err)
 	}

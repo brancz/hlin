@@ -106,14 +106,14 @@ func SplitAndEncrypt(key []byte, encryptor Encryptor, participants []Participant
 			return nil, err
 		}
 
-		publicShareSignature, err := encryptor.Sign(rand.Reader, serializedShare, nil)
-		if err != nil {
-			return nil, err
-		}
-
 		h := sha256.New()
 		h.Write(serializedShare)
 		hash := h.Sum(nil)
+
+		publicShareSignature, err := encryptor.Sign(rand.Reader, hash, nil)
+		if err != nil {
+			return nil, err
+		}
 
 		res.Public.Items[j] = &pb.PublicShare{
 			Content:   &pb.ByteContent{Bytes: serializedShare},
