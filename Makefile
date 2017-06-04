@@ -1,4 +1,4 @@
-all: build
+all: check-license check-proto build test
 
 GITHUB_URL=github.com/brancz/hlin
 GOOS?=$(shell uname -s | tr A-Z a-z)
@@ -13,18 +13,18 @@ check-license:
 	@echo ">> checking license headers"
 	@./scripts/check_license.sh
 
-compile:
-	@$(eval OUTPUT=$(OUT_DIR)/$(GOOS)/$(GOARCH)/$(BIN))
-	@echo ">> building $(COMPONENT) for $(GOOS)/$(GOARCH) to $(OUTPUT)"
-	@mkdir -p $(OUT_DIR)/$(GOOS)/$(GOARCH)
-	@CGO_ENABLED=0 go build --installsuffix cgo --ldflags="-s -X github.com/brancz/hlin/pkg/cli.Version=$(VERSION)" -o $(OUTPUT) $(GITHUB_URL)/cmd/$(COMPONENT)
-
-build: check-license compile-server compile-client
+build: compile-server compile-client
 
 crossbuild:
 	@GOOS=darwin ARCH=amd64 $(MAKE) -s build
 	@GOOS=linux ARCH=amd64 $(MAKE) -s build
 	@GOOS=windows ARCH=amd64 $(MAKE) -s build
+
+compile:
+	@$(eval OUTPUT=$(OUT_DIR)/$(GOOS)/$(GOARCH)/$(BIN))
+	@echo ">> building $(COMPONENT) for $(GOOS)/$(GOARCH) to $(OUTPUT)"
+	@mkdir -p $(OUT_DIR)/$(GOOS)/$(GOARCH)
+	@CGO_ENABLED=0 go build --installsuffix cgo --ldflags="-s -X github.com/brancz/hlin/pkg/cli.Version=$(VERSION)" -o $(OUTPUT) $(GITHUB_URL)/cmd/$(COMPONENT)
 
 compile-server:
 	@$(MAKE) -s compile COMPONENT=server BIN=hlin
@@ -37,7 +37,12 @@ test:
 	@go test $(PKGS)
 
 proto:
-	protoc --gofast_out=plugins=grpc:. pkg/api/apipb/api.proto
+	@echo ">> generating go code from protobuf definitions"
+	@protoc --gofast_out=plugins=grpc:. pkg/api/apipb/api.proto
+
+check-proto: proto
+	@echo ">> checking protobuf definitions for changes"
+	@git diff --exit-code
 
 devcerts:
 	rm -rf $(OUT_DIR)/certs
@@ -51,4 +56,4 @@ devcerts:
 	certstrap --depot-path "_output/certs" request-cert --ip 127.0.0.1 --common-name client --passphrase ""
 	certstrap --depot-path "_output/certs" sign --CA "ca" client
 
-.PHONY: all check-license compile build crossbuild build-api test
+.PHONY: all check-license build crossbuild compile compile-server compile-client test proto check-proto devcerts
