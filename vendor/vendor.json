@@ -102,10 +102,10 @@
 			"revisionTime": "2017-04-27T21:32:20Z"
 		},
 		{
-			"checksumSHA1": "BonngwuYhx6JUbiiT2mYp2Thbmg=",
+			"checksumSHA1": "g02Ux+YjVsxHpNkNtdFVaXN1S9c=",
 			"path": "github.com/grpc-ecosystem/go-grpc-prometheus",
-			"revision": "2500245aa6110c562d17020fb31a2c133d737799",
-			"revisionTime": "2017-03-30T21:24:24Z"
+			"revision": "0c1b191dbfe51efdabe3c14b9f6f3b96429e0722",
+			"revisionTime": "2017-06-16T10:12:06Z"
 		},
 		{
 			"checksumSHA1": "InNAv3jGuD6SW4qJDBtGQpj0oRI=",
@@ -152,6 +152,12 @@
 		{
 			"checksumSHA1": "KkB+77Ziom7N6RzSbyUwYGrmDeU=",
 			"path": "github.com/prometheus/client_golang/prometheus",
+			"revision": "c5b7fccd204277076155f10851dad72b76a49317",
+			"revisionTime": "2016-08-17T15:48:24Z"
+		},
+		{
+			"checksumSHA1": "lG3//eDlwqA4IOuAPrNtLh9G0TA=",
+			"path": "github.com/prometheus/client_golang/prometheus/promhttp",
 			"revision": "c5b7fccd204277076155f10851dad72b76a49317",
 			"revisionTime": "2016-08-17T15:48:24Z"
 		},

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -27,6 +28,9 @@ import (
 
 	etcdclient "github.com/coreos/etcd/clientv3"
 	"github.com/go-kit/kit/log"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -43,12 +47,13 @@ var (
 )
 
 type options struct {
-	certFile   string
-	keyFile    string
-	caFile     string
-	etcd       []string
-	port       int
-	configFile string
+	certFile      string
+	keyFile       string
+	caFile        string
+	etcd          []string
+	port          int
+	telemetryPort int
+	configFile    string
 }
 
 func Main() int {
@@ -63,6 +68,7 @@ func Main() int {
 	flags.StringVar(&opts.caFile, "ca-file", "", "The plaintext secret to encrypt and store.")
 	flags.StringSliceVarP(&opts.etcd, "etcd", "e", []string{}, "The etcd instances to use for storage (repeatable).")
 	flags.IntVarP(&opts.port, "port", "p", 10000, "Port to bind the server to.")
+	flags.IntVar(&opts.telemetryPort, "telemetry-port", 10010, "Port to bind the HTTP server serving metrics to.")
 	flags.Parse(os.Args[1:])
 
 	cfg, err := config.FromFile(opts.configFile)
@@ -80,6 +86,10 @@ func Main() int {
 		return 1
 	}
 	defer c.Close()
+
+	r := prometheus.NewRegistry()
+	r.MustRegister(prometheus.NewGoCollector())
+	r.MustRegister(prometheus.NewProcessCollector(os.Getpid(), ""))
 
 	storage := store.NewEtcdStore(c, logger.With("component", "store"))
 
@@ -119,7 +129,12 @@ func Main() int {
 		ClientCAs:    certPool,
 	})
 
-	gs := grpc.NewServer(grpc.Creds(creds))
+	grpcMetrics := grpc_prometheus.NewServerMetrics()
+	gs := grpc.NewServer(
+		grpc.Creds(creds),
+		grpc.StreamInterceptor(grpcMetrics.StreamServerInterceptor()),
+		grpc.UnaryInterceptor(grpcMetrics.UnaryServerInterceptor()),
+	)
 
 	as := api.NewAPIServer(
 		logger.With("component", "api"),
@@ -128,16 +143,32 @@ func Main() int {
 	)
 
 	pb.RegisterAPIServer(gs, as)
+	grpcMetrics.Register(r)
+	grpcMetrics.InitializeMetrics(gs)
 
-	addr := fmt.Sprintf(":%d", opts.port)
-	l, err := net.Listen("tcp", addr)
+	grpcAddr := fmt.Sprintf(":%d", opts.port)
+	gl, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		logger.Log("err", err)
 		return 1
 	}
 
-	go gs.Serve(l)
-	logger.Log("msg", fmt.Sprintf("http server listening on %s", addr))
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.HandlerFor(r, promhttp.HandlerOpts{}))
+	srv := &http.Server{Handler: mux}
+
+	httpAddr := fmt.Sprintf(":%d", opts.telemetryPort)
+	hl, err := net.Listen("tcp", httpAddr)
+	if err != nil {
+		logger.Log("err", err)
+		return 1
+	}
+
+	go gs.Serve(gl)
+	logger.Log("msg", fmt.Sprintf("gRPC server listening on %s", grpcAddr))
+
+	go srv.Serve(hl)
+	logger.Log("msg", fmt.Sprintf("HTTP server listening on %s", httpAddr))
 
 	term := make(chan os.Signal)
 	signal.Notify(term, os.Interrupt, syscall.SIGTERM)

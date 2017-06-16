@@ -24,7 +24,7 @@ compile:
 	@$(eval OUTPUT=$(OUT_DIR)/$(GOOS)/$(GOARCH)/$(BIN))
 	@echo ">> building $(COMPONENT) for $(GOOS)/$(GOARCH) to $(OUTPUT)"
 	@mkdir -p $(OUT_DIR)/$(GOOS)/$(GOARCH)
-	@CGO_ENABLED=0 go build --installsuffix cgo --ldflags="-s -X github.com/brancz/hlin/pkg/cli.Version=$(VERSION)" -o $(OUTPUT) $(GITHUB_URL)/cmd/$(COMPONENT)
+	@CGO_ENABLED=0 go build -i --installsuffix cgo --ldflags="-s -X github.com/brancz/hlin/pkg/cli.Version=$(VERSION)" -o $(OUTPUT) $(GITHUB_URL)/cmd/$(COMPONENT)
 
 compile-server:
 	@$(MAKE) -s compile COMPONENT=server BIN=hlin
