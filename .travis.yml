@@ -9,3 +9,4 @@ before_script:
 - mkdir -p /tmp/proto/include
 - ./scripts/install-protobuf.sh 3.3.0 /tmp/proto
 - export PATH=$PATH:/tmp/proto/bin
+- go get github.com/gogo/protobuf/protoc-gen-gofast

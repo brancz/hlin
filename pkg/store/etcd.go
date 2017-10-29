@@ -30,8 +30,8 @@ var SharesNotFound = errors.New("shares not found")
 var CipherTextNotFound = errors.New("cipher text not found")
 
 type SecretStore interface {
-	CreateSecret(ctx context.Context, secretId string, s *pb.CreateSecretRequest) (*pb.PlainSecret, error)
-	GetSecret(ctx context.Context, secretId string) (*pb.PlainSecret, error)
+	CreateSecret(ctx context.Context, secretId string, s *pb.CreateSecretRequest) (*pb.SimpleSecret, error)
+	GetSecret(ctx context.Context, secretId string) (*pb.SimpleSecret, error)
 	GetPublicShares(ctx context.Context, secretId string) (*pb.PublicShares, error)
 	GetPrivateShares(ctx context.Context, secretId, receiver string) (*pb.PrivateShares, error)
 	GetCipherText(ctx context.Context, secretId string) (*pb.CipherText, error)
@@ -51,11 +51,11 @@ func NewEtcdStore(c *clientv3.Client, logger log.Logger) SecretStore {
 	}
 }
 
-func (e *EtcdStore) CreateSecret(ctx context.Context, secretId string, s *pb.CreateSecretRequest) (*pb.PlainSecret, error) {
-	ps := &pb.PlainSecret{SecretId: secretId}
+func (e *EtcdStore) CreateSecret(ctx context.Context, secretId string, s *pb.CreateSecretRequest) (*pb.SimpleSecret, error) {
+	ps := &pb.SimpleSecret{SecretId: secretId}
 	out, err := proto.Marshal(ps)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to encode PlainSecret")
+		return nil, errors.Wrap(err, "failed to encode SimpleSecret")
 	}
 
 	_, err = e.etcdclient.Put(ctx, secretKey(secretId), string(out))
@@ -95,7 +95,7 @@ func (e *EtcdStore) CreateSecret(ctx context.Context, secretId string, s *pb.Cre
 	return ps, nil
 }
 
-func (e *EtcdStore) GetSecret(ctx context.Context, secretId string) (*pb.PlainSecret, error) {
+func (e *EtcdStore) GetSecret(ctx context.Context, secretId string) (*pb.SimpleSecret, error) {
 	r, err := e.etcdclient.Get(ctx, secretKey(secretId))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting secret from etcd failed")
@@ -108,10 +108,10 @@ func (e *EtcdStore) GetSecret(ctx context.Context, secretId string) (*pb.PlainSe
 		return nil, WrongNumberOfResults
 	}
 
-	ps := &pb.PlainSecret{}
+	ps := &pb.SimpleSecret{}
 	err = proto.Unmarshal(r.Kvs[0].Value, ps)
 	if err != nil {
-		return nil, errors.Wrap(err, "unmarshaling PlainSecret failed")
+		return nil, errors.Wrap(err, "unmarshaling SimpleSecret failed")
 	}
 
 	return ps, nil

@@ -3,8 +3,8 @@ syntax = "proto3";
 package apipb;
 
 service API {
-  rpc CreateSecret(CreateSecretRequest) returns (PlainSecret) {}
-  rpc GetSecret(GetSecretRequest) returns (PlainSecret) {}
+  rpc CreateSecret(CreateSecretRequest) returns (SimpleSecret) {}
+  rpc GetSecret(GetSecretRequest) returns (SimpleSecret) {}
   rpc GetPublicShares(GetPublicSharesRequest) returns (PublicShares) {}
   rpc GetPrivateShares(GetPrivateSharesRequest) returns (PrivateShares) {}
   rpc GetCipherText(GetCipherTextRequest) returns (CipherText) {}
@@ -51,7 +51,7 @@ message CreateSecretRequest {
   Shares shares = 2;
 }
 
-message PlainSecret {
+message SimpleSecret {
   string secret_id = 1;
 }
 

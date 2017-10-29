@@ -40,11 +40,11 @@ func NewAPIServer(logger log.Logger, sStore store.SecretStore, kStore crypto.Key
 	}
 }
 
-func (a *API) CreateSecret(ctx context.Context, s *pb.CreateSecretRequest) (*pb.PlainSecret, error) {
+func (a *API) CreateSecret(ctx context.Context, s *pb.CreateSecretRequest) (*pb.SimpleSecret, error) {
 	return a.secretStore.CreateSecret(ctx, uuid.NewV4().String(), s)
 }
 
-func (a *API) GetSecret(ctx context.Context, r *pb.GetSecretRequest) (*pb.PlainSecret, error) {
+func (a *API) GetSecret(ctx context.Context, r *pb.GetSecretRequest) (*pb.SimpleSecret, error) {
 	s, err := a.secretStore.GetSecret(ctx, r.SecretId)
 	if err == store.SecretNotFound {
 		return nil, grpc.Errorf(codes.NotFound, "secret not found")

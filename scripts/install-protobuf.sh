@@ -23,5 +23,3 @@ unzip /tmp/protoc-${version}-linux-x86_64.zip -d /tmp/protobuf-${version}
 
 cp /tmp/protobuf-${version}/bin/protoc ${install_dir}/bin/protoc
 cp -r /tmp/protobuf-${version}/include/google ${install_dir}/include/google
-
-go get github.com/gogo/protobuf/protoc-gen-gofast
