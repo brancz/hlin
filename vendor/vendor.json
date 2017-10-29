@@ -102,10 +102,10 @@
 			"revisionTime": "2017-04-27T21:32:20Z"
 		},
 		{
-			"checksumSHA1": "g02Ux+YjVsxHpNkNtdFVaXN1S9c=",
+			"checksumSHA1": "MJAZWMKvBuKGdtTd0PhF+wMcazc=",
 			"path": "github.com/grpc-ecosystem/go-grpc-prometheus",
-			"revision": "0c1b191dbfe51efdabe3c14b9f6f3b96429e0722",
-			"revisionTime": "2017-06-16T10:12:06Z"
+			"revision": "9dd71a3316b8915beb3a377781618807bb21f0f2",
+			"revisionTime": "2017-08-15T08:05:44Z"
 		},
 		{
 			"checksumSHA1": "InNAv3jGuD6SW4qJDBtGQpj0oRI=",
