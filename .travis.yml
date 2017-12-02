@@ -7,6 +7,6 @@ go:
 before_script:
 - mkdir -p /tmp/proto/bin
 - mkdir -p /tmp/proto/include
-- ./scripts/install-protobuf.sh 3.3.0 /tmp/proto
+- ./scripts/install-protobuf.sh `cat PROTOC_VERSION | tr -d "\n"` /tmp/proto
 - export PATH=$PATH:/tmp/proto/bin
 - go get github.com/gogo/protobuf/protoc-gen-gofast
