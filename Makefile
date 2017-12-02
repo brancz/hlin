@@ -36,6 +36,13 @@ test:
 	@echo ">> running all tests"
 	@go test $(PKGS)
 
+docker-build:
+	@echo ">> building docker image for building"
+	@docker build -f scripts/Dockerfile -t quay.io/brancz/hlin-build .
+
+docker-make-proto: docker-build
+	docker run --rm -it -v `pwd`:/go/src/github.com/brancz/hlin quay.io/brancz/hlin-build make proto
+
 proto:
 	@echo ">> generating go code from protobuf definitions"
 	@protoc --gofast_out=plugins=grpc:. pkg/api/apipb/api.proto
